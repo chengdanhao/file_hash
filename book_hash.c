@@ -39,14 +39,24 @@
 #define BOOK_NAME_LEN 14	// 最好是16的倍数减2，方便16进制工具查看
 #define HASH_GROUP_CNT 3
 
+//#define HELPER_ARRAY
+#define HELPER_ARRAY_SIZE 4
+
 typedef struct {
-	char s[4];
+#ifdef HELPER_ARRAY
+	char s[HELPER_ARRAY_SIZE];
+#endif
 	uint32_t next_offset;
+	uint32_t book_code;
 	uint8_t used;
 	char path[BOOK_NAME_LEN + 1];
-	char e[4];
+#ifdef HELPER_ARRAY
+	char e[HELPER_ARRAY_SIZE];
+#endif
 } record_node_t;
 
+// 该结构体不能删除，否则会出错
+// 用于记录写信息，暂时没想好放什么
 typedef struct {
 	uint32_t reserved;
 } record_property_t;
@@ -134,8 +144,11 @@ int _build_record(const char* f, char* path, uint8_t rebuild) {
 		}
 
 		memset(&node, 0, sizeof(node));
-		memcpy(node.s, ">>>>", 4);
-		memcpy(node.e, "<<<<", 4);
+#ifdef HELPER_ARRAY
+		memcpy(node.s, ">>>>", HELPER_ARRAY_SIZE);
+		memcpy(node.e, "<<<<", HELPER_ARRAY_SIZE);
+#endif
+
 		for (i = 0; i < HASH_GROUP_CNT; i++) {
 			if (write(fd, &node, sizeof(record_node_t)) < 0) {
 				hash_error("(%s calls) write node error.", f);
@@ -155,32 +168,7 @@ exit:
 #define check_record(path)		_build_record(__func__, path, 0)
 #define rebuild_record(path)	_build_record(__func__, path, 1)
 
-int pick_a_node(int fd, int offset, record_node_t* node, size_t node_size) {
-	int ret = -1;
-
-	if (lseek(fd, offset, SEEK_SET) < 0) {
-		hash_error("seek to %d fail.", offset);
-		goto exit;
-	}
-
-	if (read(fd, node, node_size) < 0) {
-		hash_error("read node failed.");
-		goto exit;
-	}
-
-	if (lseek(fd, offset, SEEK_SET) < 0) {
-		hash_error("seek back to %d fail.", offset);
-		goto exit;
-	}
-
-	ret = 0;
-
-exit:
-	return ret;
-}
-
-
-int append_book(char* record_path, uint32_t bookcode, char* path) {
+int append_book(char* record_path, uint32_t book_code, char* path) {
 	int ret = -1;
 	int fd = 0;
 	int n_r = 0;
@@ -198,7 +186,7 @@ int append_book(char* record_path, uint32_t bookcode, char* path) {
 		goto exit;
 	}
 
-	group = bookcode % HASH_GROUP_CNT;
+	group = book_code % HASH_GROUP_CNT;
 	offset = sizeof(record_property_t) + group * sizeof(record_node_t);
 
 	if ((fd = open(record_path, O_RDWR)) < 0) {
@@ -242,19 +230,23 @@ int append_book(char* record_path, uint32_t bookcode, char* path) {
 					goto exit;
 				}
 
-				// 填充新节点
+				// 移到新节点处
 				lseek(fd, 0, SEEK_END);
 
-				hash_debug("bookcode = %d, %s (0x%x) -> %s (0x%x).", bookcode, curr_node.path, offset, path, new_node_offset);
+				hash_debug("book_code = %d, %s (0x%x) -> %s (0x%x).", book_code, curr_node.path, offset, path, new_node_offset);
 			} else {
-				hash_debug("bookcode = %d, %s (0x%x).", bookcode, curr_node.path, offset);
+				hash_debug("book_code = %d, %s (0x%x).", book_code, curr_node.path, offset);
 			}
 
+			// 填充新节点
 			curr_node.used = 1;
+			curr_node.book_code = book_code;
 			curr_node.next_offset = 0;
 			strncpy(curr_node.path, path, BOOK_NAME_LEN);
-			memcpy(curr_node.s, ">>>>", 4);
-			memcpy(curr_node.e, "<<<<", 4);
+#ifdef HELPER_ARRAY
+			memcpy(curr_node.s, ">>>>", HELPER_ARRAY_SIZE);
+			memcpy(curr_node.e, "<<<<", HELPER_ARRAY_SIZE);
+#endif
 
 			if (write(fd, &curr_node, sizeof(record_node_t)) < 0) {
 				hash_error("init new node error.");
@@ -274,5 +266,53 @@ close_file:
 
 exit:
 	return ret;	
+}
+
+void print_nodes(char* path) {
+	uint8_t i = 0;
+	int fd = 0;
+	off_t offset = 0;
+	record_node_t node;
+
+	if ((fd = open(path, O_RDWR)) < 0) {
+		hash_error("Open %s fail.", path);
+		goto exit;
+	}
+
+	memset(&node, 0, sizeof(record_node_t));
+
+	for (i = 0; i < HASH_GROUP_CNT; i++) {
+		if ((offset = lseek(fd, sizeof(record_property_t) + i * sizeof(record_node_t), SEEK_SET)) < 0) {
+			hash_error("skip %s property failed.", path);
+			goto close_file;
+		}
+
+		printf("[%d]\t<0x%.2lX> ", i, offset);
+
+		while (offset > 0) {
+			if (lseek(fd, offset, SEEK_SET) < 0) {
+				hash_error("seek to %ld fail.", offset);
+				goto close_file;
+			}
+
+			if (read(fd, &node, sizeof(record_node_t)) < 0) {
+				hash_error("read node failed.");
+				goto close_file;
+			}
+
+			if (node.used) {
+				printf("{%d :%s} -> <0x%.2X> ", node.book_code, node.path, node.next_offset);
+			}
+
+			offset = node.next_offset;
+		}
+		printf("\n");
+	}
+
+close_file:
+	close(fd);
+
+exit:
+	return;
 }
 
