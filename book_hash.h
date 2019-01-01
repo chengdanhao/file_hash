@@ -3,7 +3,8 @@
 
 #include <stdint.h>
 
-int append_book(char* record_path, uint32_t bookcode, char* path);
+int add_book(char* record_path, uint32_t bookcode, char* path);
+int del_book(char* record_path, uint32_t book_code);
 void print_nodes(char* path);
 
 #endif

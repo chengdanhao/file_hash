@@ -168,7 +168,7 @@ exit:
 #define check_record(path)		_build_record(__func__, path, 0)
 #define rebuild_record(path)	_build_record(__func__, path, 1)
 
-int append_book(char* record_path, uint32_t book_code, char* path) {
+int add_book(char* record_path, uint32_t book_code, char* book_path) {
 	int ret = -1;
 	int fd = 0;
 	int n_r = 0;
@@ -176,44 +176,59 @@ int append_book(char* record_path, uint32_t book_code, char* path) {
 	uint32_t group = 0;
 	uint32_t new_node_offset = 0;
 	uint32_t offset = 0;
-	uint8_t more_than_one_node = 0;
-	uint32_t prev_node_offset = 0;
-	record_node_t prev_node;
-	record_node_t curr_node;
+	record_node_t node;
 
 	if (check_record(record_path) < 0) {
 		hash_error("init record error.");
 		goto exit;
 	}
 
-	group = book_code % HASH_GROUP_CNT;
-	offset = sizeof(record_property_t) + group * sizeof(record_node_t);
-
 	if ((fd = open(record_path, O_RDWR)) < 0) {
 		hash_error("Open file %s fail.", record_path);
 		goto exit;
 	}
 
-	memset(&curr_node, 0, sizeof(record_node_t));
+	group = book_code % HASH_GROUP_CNT;
+	offset = sizeof(record_property_t) + group * sizeof(record_node_t);
+	memset(&node, 0, sizeof(record_node_t));
+
 	while (offset > 0) {
 		// 拿一个节点数据，取完后文件指针不要挪动
 		if (lseek(fd, offset, SEEK_SET) < 0) {
 			hash_error("seek to %d fail.", offset);
-			goto exit;
+			goto close_file;
 		}
 
-		if (read(fd, &curr_node, sizeof(record_node_t)) < 0) {
+		if (read(fd, &node, sizeof(record_node_t)) < 0) {
 			hash_error("read node failed.");
-			goto exit;
+			goto close_file;
 		}
 
 		if (lseek(fd, offset, SEEK_SET) < 0) {
 			hash_error("seek back to %d fail.", offset);
-			goto exit;
+			goto close_file;
 		}
 
-		if (0 == curr_node.next_offset) {
-			if (1 == curr_node.used) {
+		/*
+		used  next_offset  desc
+		 0		  0 	   首次使用第一个节点
+		 0		  1 	   被清空过的节点
+		 1		  0 	   已被使用的最后一个节点
+		*/
+		if (0 == node.used || 0 == node.next_offset) {
+			// 0 0, 首次使用第一个节点
+			if (0 == node.used && 0 == node.next_offset) {
+				hash_debug("(FIRST) <0x%x> {%d : '%s'}.", offset, book_code, book_path);
+				node.next_offset = 0;
+			}
+
+			// 0 1, 被清空过的节点
+			else if (0 == node.used && node.next_offset > 0) {
+				hash_debug(" (USED) <0x%x> {%d : '%s'} -> <0x%x>.", offset, book_code, book_path, node.next_offset);
+			}
+
+			// 1 0, 已被使用的最后一个节点
+			else if (1 == node.used && 0 == node.next_offset) {
 				// 新节点在文件末尾插入
 				if ((new_node_offset = lseek(fd, 0, SEEK_END)) < 0) {
 					hash_error("prepare new node, seek to %d fail.", offset);
@@ -223,39 +238,38 @@ int append_book(char* record_path, uint32_t book_code, char* path) {
 				// 修改当前解点的next_offset值，指向新节点
 				lseek(fd, offset, SEEK_SET);
 
-				curr_node.next_offset = new_node_offset;
+				node.next_offset = new_node_offset;
 
-				if (write(fd, &curr_node, sizeof(record_node_t)) < 0) {
+				if (write(fd, &node, sizeof(record_node_t)) < 0) {
 					hash_error("init new node error.");
-					goto exit;
+					goto close_file;
 				}
 
 				// 移到新节点处
 				lseek(fd, 0, SEEK_END);
 
-				hash_debug("book_code = %d, %s (0x%x) -> %s (0x%x).", book_code, curr_node.path, offset, path, new_node_offset);
-			} else {
-				hash_debug("book_code = %d, %s (0x%x).", book_code, curr_node.path, offset);
+				node.next_offset = 0;
+
+				hash_debug(" (TAIL) <0x%x> {%d : '%s'} -> <0x%x> {%d : '%s'}.",
+					offset, node.book_code, node.path, new_node_offset, book_code, book_path);
 			}
 
-			// 填充新节点
-			curr_node.used = 1;
-			curr_node.book_code = book_code;
-			curr_node.next_offset = 0;
-			strncpy(curr_node.path, path, BOOK_NAME_LEN);
+			node.used = 1;
+			node.book_code = book_code;
+			strncpy(node.path, book_path, BOOK_NAME_LEN);
 #ifdef HELPER_ARRAY
-			memcpy(curr_node.s, ">>>>", HELPER_ARRAY_SIZE);
-			memcpy(curr_node.e, "<<<<", HELPER_ARRAY_SIZE);
+			memcpy(node.s, ">>>>", HELPER_ARRAY_SIZE);
+			memcpy(node.e, "<<<<", HELPER_ARRAY_SIZE);
 #endif
 
-			if (write(fd, &curr_node, sizeof(record_node_t)) < 0) {
+			if (write(fd, &node, sizeof(record_node_t)) < 0) {
 				hash_error("init new node error.");
-				goto exit;
+				goto close_file;
 			}
 
 			break;
 		} else {
-			offset = curr_node.next_offset;
+			offset = node.next_offset;
 		}
 	}
 
@@ -268,11 +282,81 @@ exit:
 	return ret;	
 }
 
+int del_book(char* record_path, uint32_t book_code) {
+	int ret = -1;
+	int fd = 0;
+	int n_r = 0;
+	uint32_t i = 0;
+	uint32_t group = 0;
+	uint32_t offset = 0;
+	record_node_t node;
+
+	if (access(record_path, F_OK) < 0) {
+		hash_debug("%s not exist.", record_path);
+		goto exit;
+	}
+
+	if ((fd = open(record_path, O_RDWR)) < 0) {
+		hash_error("Open file %s fail.", record_path);
+		goto exit;
+	}
+
+	group = book_code % HASH_GROUP_CNT;
+	offset = sizeof(record_property_t) + group * sizeof(record_node_t);
+	memset(&node, 0, sizeof(record_node_t));
+
+	while (offset > 0) {
+		if (lseek(fd, offset, SEEK_SET) < 0) {
+			hash_error("seek to %d fail.", offset);
+			goto close_file;
+		}
+
+		if (read(fd, &node, sizeof(record_node_t)) < 0) {
+			hash_error("read node failed.");
+			goto close_file;
+		}
+
+		if (book_code == node.book_code) {
+			// 移到节点起始位置
+			if (lseek(fd, offset, SEEK_SET) < 0) {
+				hash_error("seek back to %d fail.", offset);
+				goto close_file;
+			}
+
+			hash_debug("preparing delete '%s' (%d).", node.path, node.book_code);
+
+			node.used = 0;
+			node.book_code = 0;
+			memset(&(node.path), 0, sizeof(node.path));
+
+			if (write(fd, &node, sizeof(record_node_t)) < 0) {
+				hash_error("del node error.");
+				perror("delete");
+				goto close_file;
+			}
+
+			hash_info("delete bookcode %d success.", book_code);
+
+			break;
+		} else {
+			offset = node.next_offset;
+		}
+	}
+
+	ret = 0;
+
+close_file:
+	close(fd);
+exit:
+	return ret;
+}
+
 void print_nodes(char* path) {
 	uint8_t i = 0;
 	int fd = 0;
 	off_t offset = 0;
 	record_node_t node;
+	static uint8_t s_first_node = 1;
 
 	if ((fd = open(path, O_RDWR)) < 0) {
 		hash_error("Open %s fail.", path);
@@ -282,12 +366,13 @@ void print_nodes(char* path) {
 	memset(&node, 0, sizeof(record_node_t));
 
 	for (i = 0; i < HASH_GROUP_CNT; i++) {
+		s_first_node = 1;
 		if ((offset = lseek(fd, sizeof(record_property_t) + i * sizeof(record_node_t), SEEK_SET)) < 0) {
 			hash_error("skip %s property failed.", path);
 			goto close_file;
 		}
 
-		printf("[%d]\t<0x%.2lX> ", i, offset);
+		printf("[%d]\t", i);
 
 		while (offset > 0) {
 			if (lseek(fd, offset, SEEK_SET) < 0) {
@@ -300,8 +385,18 @@ void print_nodes(char* path) {
 				goto close_file;
 			}
 
+			if (s_first_node) {
+				s_first_node = 0;
+			} else {
+				printf(" -> ");
+			}
+
+			printf("<0x%.2lX> ", offset);
+
 			if (node.used) {
-				printf("{%d :%s} -> <0x%.2X> ", node.book_code, node.path, node.next_offset);
+				printf("{%d : '%s'}", node.book_code, node.path);
+			} else {
+				printf("{ ----- }");
 			}
 
 			offset = node.next_offset;
