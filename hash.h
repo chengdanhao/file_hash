@@ -6,6 +6,6 @@
 
 int add_node(char* record_path, node_data_t* data, int (*cb)(node_data_t*, node_data_t*));
 int del_node(char* record_path, node_data_t* data, int (*cb)(node_data_t*, node_data_t*));
-void print_nodes(char* path);
+void print_nodes(char* path, char* (*cb)(node_data_t*));
 
 #endif

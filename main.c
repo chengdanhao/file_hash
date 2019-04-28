@@ -1,13 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "hash.h"
-
-typedef struct {
-	char* path;
-	int code;
-} book_t;
-
-#define BOOK_RECORD "record"
+#include "node.h"
 
 int main() {
 	const book_t books_1[] = {
@@ -38,32 +32,21 @@ int main() {
 
 	printf("%lu books in total.\n", sizeof(books_1)/ sizeof(book_t));
 	for (int i = 0; i < sizeof(books_1) / sizeof(book_t); i++) {
-		node_data_t data;
-		data.hash_key = data.book_code = books_1[i].code;
-		strncpy(data.path, books_1[i].path, sizeof(data.path));
-		add_node(BOOK_RECORD, &data, add_node_cb);
+		add_book(books_1[i].code, books_1[i].path);
 	}
 
-	print_nodes(BOOK_RECORD);
+	print_books();
 
-	node_data_t data;
-	data.hash_key = data.book_code = 0;
-	del_node(BOOK_RECORD, &data, del_node_cb);
-	data.hash_key = data.book_code = 4;
-	del_node(BOOK_RECORD, &data, del_node_cb);
-	data.hash_key = data.book_code = 11;
-	del_node(BOOK_RECORD, &data, del_node_cb);
-	data.hash_key = data.book_code = 3;
-	del_node(BOOK_RECORD, &data, del_node_cb);
+	del_book(0);
+	del_book(4);
+	del_book(11);
+	del_book(3);
 
-	print_nodes(BOOK_RECORD);
+	print_books();
 
 	for (int i = 0; i < sizeof(books_2) / sizeof(book_t); i++) {
-		node_data_t data;
-		data.hash_key = data.book_code = books_2[i].code;
-		strncpy(data.path, books_2[i].path, sizeof(data.path));
-		add_node(BOOK_RECORD, &data, add_node_cb);
+		add_book(books_2[i].code, books_2[i].path);
 	}
 
-	print_nodes(BOOK_RECORD);
+	print_books();
 }

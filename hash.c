@@ -344,11 +344,12 @@ exit:
 	return ret;
 }
 
-void print_nodes(char* path) {
+void print_nodes(char* path, char* (*cb)(node_data_t*)) {
 	uint8_t i = 0;
 	int fd = 0;
 	off_t offset = 0;
 	record_node_t node;
+	char* cb_res = NULL;
 	static uint8_t s_first_node = 1;
 
 	if ((fd = open(path, O_RDWR)) < 0) {
@@ -387,7 +388,12 @@ void print_nodes(char* path) {
 			printf("<0x%.2lX> ", offset);
 
 			if (node.used) {
-				printf("{%d : '%s'}", node.data.book_code, node.data.path);
+				//printf("{%d : '%s'}", node.data.book.code, node.data.book.path);
+				if (cb_res = cb(&(node.data))) {
+					printf("%s", cb_res);
+					free(cb_res);
+					cb_res = NULL;
+				}
 			} else {
 				printf("{ ----- }");
 			}
