@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "book_hash.h"
+#include "hash.h"
 
 typedef struct {
 	char* path;
