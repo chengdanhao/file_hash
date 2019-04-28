@@ -36,17 +36,8 @@
 #define hash_error(fmt, ...)
 #endif
 
-#define PATH_LEN 94	// 最好是16的倍数减2，方便16进制工具查看
-#define HASH_GROUP_CNT 1	// 如果为1，就是单链表
-
 //#define HELPER_ARRAY
 #define HELPER_ARRAY_SIZE 4
-
-// 后续只需要修改这个结构体就可以服用下面的结构体内容即可复用
-typedef struct {
-	uint32_t book_code;
-	char path[PATH_LEN + 1];
-} node_data_t;
 
 typedef struct {
 #ifdef HELPER_ARRAY
@@ -173,7 +164,7 @@ exit:
 #define check_record(path)		_build_record(__func__, path, 0)
 #define rebuild_record(path)	_build_record(__func__, path, 1)
 
-int add_book(char* record_path, uint32_t book_code, char* book_path) {
+int add_node(char* record_path, node_data_t* data, int (*cb)(node_data_t*, node_data_t*)) {
 	int ret = -1;
 	int fd = 0;
 	int n_r = 0;
@@ -193,7 +184,7 @@ int add_book(char* record_path, uint32_t book_code, char* book_path) {
 		goto exit;
 	}
 
-	group = book_code % HASH_GROUP_CNT;
+	group = data->hash_key % HASH_GROUP_CNT;
 	offset = sizeof(record_property_t) + group * sizeof(record_node_t);
 	memset(&node, 0, sizeof(record_node_t));
 
@@ -223,13 +214,14 @@ int add_book(char* record_path, uint32_t book_code, char* book_path) {
 		if (0 == node.used || 0 == node.next_offset) {
 			// 0 0, 首次使用第一个节点
 			if (0 == node.used && 0 == node.next_offset) {
-				hash_info("(FIRST) <0x%x> {%d : '%s'}.", offset, book_code, book_path);
+				hash_info("(FIRST) <0x%x> { %d }", offset, data->hash_key);
 				node.next_offset = 0;
 			}
 
 			// 0 1, 被清空过的节点
 			else if (0 == node.used && node.next_offset > 0) {
-				hash_debug(" (USED) <0x%x> {%d : '%s'} -> <0x%x>.", offset, book_code, book_path, node.next_offset);
+				hash_debug(" (USED) <0x%x> { %d } -> <0x%x>",
+					offset, data->hash_key, node.next_offset);
 			}
 
 			// 1 0, 已被使用的最后一个节点
@@ -255,13 +247,14 @@ int add_book(char* record_path, uint32_t book_code, char* book_path) {
 
 				node.next_offset = 0;
 
-				hash_info(" (TAIL) <0x%x> {%d : '%s'} -> <0x%x> {%d : '%s'}.",
-					offset, node.data.book_code, node.data.path, new_node_offset, book_code, book_path);
+				hash_info(" (TAIL) <0x%x> { %d } -> <0x%x> { %d }",
+					offset, node.data.hash_key, new_node_offset, data->hash_key);
 			}
 
 			node.used = 1;
-			node.data.book_code = book_code;
-			strncpy(node.data.path, book_path, PATH_LEN);
+
+			cb(&(node.data), data);
+
 #ifdef HELPER_ARRAY
 			memcpy(node.s, ">>>>", HELPER_ARRAY_SIZE);
 			memcpy(node.e, "<<<<", HELPER_ARRAY_SIZE);
@@ -287,7 +280,7 @@ exit:
 	return ret;	
 }
 
-int del_book(char* record_path, uint32_t book_code) {
+int del_node(char* record_path, node_data_t* data, int (*cb)(node_data_t*, node_data_t*)) {
 	int ret = -1;
 	int fd = 0;
 	int n_r = 0;
@@ -306,7 +299,7 @@ int del_book(char* record_path, uint32_t book_code) {
 		goto exit;
 	}
 
-	group = book_code % HASH_GROUP_CNT;
+	group = data->hash_key % HASH_GROUP_CNT;
 	offset = sizeof(record_property_t) + group * sizeof(record_node_t);
 	memset(&node, 0, sizeof(record_node_t));
 
@@ -321,18 +314,15 @@ int del_book(char* record_path, uint32_t book_code) {
 			goto close_file;
 		}
 
-		if (book_code == node.data.book_code) {
+		// 比较的同时，清空node.data中的相关数据
+		if (0 == cb(&(node.data), data)) {
+			node.used = 0;
+
 			// 移到节点起始位置
 			if (lseek(fd, offset, SEEK_SET) < 0) {
 				hash_error("seek back to %d fail.", offset);
 				goto close_file;
 			}
-
-			hash_debug("preparing delete '%s' (%d).", node.data.path, node.data.book_code);
-
-			node.used = 0;
-			node.data.book_code = 0;
-			memset(&(node.data.path), 0, sizeof(node.data.path));
 
 			if (write(fd, &node, sizeof(record_node_t)) < 0) {
 				hash_error("del node error.");
@@ -340,12 +330,10 @@ int del_book(char* record_path, uint32_t book_code) {
 				goto close_file;
 			}
 
-			hash_warn("<success> delete bookcode %d.", book_code);
-
 			break;
-		} else {
-			offset = node.next_offset;
 		}
+		
+		offset = node.next_offset;
 	}
 
 	ret = 0;
