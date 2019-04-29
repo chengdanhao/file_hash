@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <string.h>
-#include "hash.h"
 #include "node.h"
 
 int main() {
@@ -30,7 +29,9 @@ int main() {
 		{"new 9", 9},
 	};
 
-	printf("%lu books in total.\n", sizeof(books_1)/ sizeof(book_t));
+	init_hash_engine(3, sizeof(book_t));
+
+	printf("%lu books in total.\n", sizeof(books_1) / sizeof(book_t));
 	for (int i = 0; i < sizeof(books_1) / sizeof(book_t); i++) {
 		add_book(books_1[i].code, books_1[i].path);
 	}

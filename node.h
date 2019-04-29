@@ -2,11 +2,11 @@
 #define __NODE_H__
 
 #include <stdint.h>
+#include "hash.h"
 
 #define RECORD_PATH "record"
 
 #define PATH_LEN 94	// 最好是16的倍数减2，方便16进制工具查看
-
 
 /*
  * 后续只需要修改这个头文件就可以自定义节点数据，底层代码不用修改
@@ -16,11 +16,6 @@ typedef struct {
 	char path[PATH_LEN];
 	uint32_t code;
 } book_t;
-
-typedef struct {
-	uint32_t hash_key;	// 该字段不能删！！！
-	book_t book;
-} node_data_t;
 
 #define HASH_GROUP_CNT 3	// 如果为1，就是单链表
 

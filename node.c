@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "hash.h"
+#include "node.h"
 
 #define NODE_INFO 1
 #define NODE_DBUG 1
@@ -32,53 +33,82 @@
 #define node_error(fmt, ...)
 #endif
 
-int add_node_cb(node_data_t* record_data, node_data_t* input_data) {
-	memcpy(record_data, input_data, sizeof(node_data_t));
+int add_node_cb(node_data_t* file_data, node_data_t* input_data) {
+	file_data->hash_key = input_data->hash_key;
+	memcpy(file_data->hash_value, input_data->hash_value, sizeof(book_t));
+	//node_error(">>>> %s , %d.", ((book_t*)(input_data->hash_value))->path, ((book_t*)(input_data->hash_value))->code);
 	return 0;
 }
 
-int del_node_cb(node_data_t* record_data, node_data_t* input_data) {
+int del_node_cb(node_data_t* file_data, node_data_t* input_data) {
 	int ret = -1;
+	book_t* file_book = NULL;
+	book_t* input_book = NULL;
 
-	if (input_data->book.code == record_data->book.code) {
-		node_warn("<success> delete book %d (%s).", input_data->book.code, record_data->book.path); 
-		record_data->hash_key = 0;
-		record_data->book.code = 0;
-		memset(&(record_data->book.path), 0, sizeof(record_data->book.path));
+	file_book = (book_t*)(file_data->hash_value);
+	input_book = (book_t*)(input_data->hash_value);
+
+	if (file_book->code == input_book->code) {
+		node_warn("<success> delete book %d (%s).", file_book->code, file_book->path); 
+		file_data->hash_key = 0;
+		file_book->code = 0;
+		memset(file_book->path, 0, PATH_LEN);
 		ret = 0;
 	}
 
 	return ret;
 }
 
-// print_node接口会释放cb中申请的内存
-char* print_node_cb(node_data_t* record_data) {
+char* print_node_cb(node_data_t* file_data) {
 	char* res = NULL;
 	int malloc_size = sizeof(node_data_t) + 20;
+	book_t* file_book = NULL;
 
+	file_book = (book_t*)(file_data->hash_value);
+
+	// print_node接口会释放cb中申请的内存
 	if (NULL == (res = (char*)calloc(1, malloc_size))) {
 		node_error("malloc failed.");
 		goto exit;
 	}
 
-	snprintf(res, malloc_size, "{%d : '%s'}", record_data->book.code, record_data->book.path);
+	snprintf(res, malloc_size, "{%d : '%s'}", file_book->code, file_book->path);
 
 exit:
 	return res;
 }
 
 int add_book(int book_code, const char* book_path) {
+	int ret = -1;
 	node_data_t data;
+	book_t book;
 
 	memset(&data, 0, sizeof(data));
-	data.hash_key = data.book.code = book_code;
-	strncpy(data.book.path, book_path, sizeof(data.book.path));
-	return add_node(RECORD_PATH, &data, add_node_cb);
+	memset(&book, 0, sizeof(book));
+
+	book.code = book_code;
+	strncpy(book.path, book_path, sizeof(book.path));
+
+	data.hash_key = book_code;
+	data.hash_value = &book;
+	ret = add_node(RECORD_PATH, &data, add_node_cb);
+
+exit:
+	return ret;
 }
 
 int del_book(int book_code) {
 	node_data_t data;
-	data.hash_key = data.book.code = book_code;
+	book_t book;
+
+	memset(&data, 0, sizeof(data));
+	memset(&book, 0, sizeof(book));
+
+	book.code = book_code;
+
+	data.hash_key = book_code;
+	data.hash_value = &book;
+
 	return del_node(RECORD_PATH, &data, del_node_cb);
 }
 

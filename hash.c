@@ -36,26 +36,8 @@
 #define hash_error(fmt, ...)
 #endif
 
-//#define HELPER_ARRAY
-#define HELPER_ARRAY_SIZE 4
-
-typedef struct {
-#ifdef HELPER_ARRAY
-	char s[HELPER_ARRAY_SIZE];
-#endif
-	uint8_t used;
-	uint32_t next_offset;
-	node_data_t data;
-#ifdef HELPER_ARRAY
-	char e[HELPER_ARRAY_SIZE];
-#endif
-} record_node_t;
-
-// 该结构体不能删除，否则会出错
-// 用于记录一些信息，暂时没想好放什么
-typedef struct {
-	uint32_t reserved;
-} record_property_t;
+static uint32_t s_hash_slot_cnt;
+static uint32_t s_hash_value_size;
 
 ssize_t happy_write(const char* f, int fd, void *buf, size_t count) {
 	int ret = -1;
@@ -107,7 +89,8 @@ int _build_record(const char* f, char* path, uint8_t rebuild) {
 	uint8_t i = 0;
 	uint8_t file_exist = 0;
 	record_property_t prop;
-	record_node_t node;
+	file_node_t node;
+	void* hash_value = NULL;
 
 	if (access(path, F_OK) < 0) {
 		hash_debug("(%s calls) %s not exist.", f, path);
@@ -136,19 +119,26 @@ int _build_record(const char* f, char* path, uint8_t rebuild) {
 		prop.reserved = 0x12345678;
 		if (write(fd, &prop, sizeof(record_property_t)) < 0) {
 			hash_error("(%s calls) write prop error.", f);
-			goto exit;
+			goto close_file;
 		}
 
 		memset(&node, 0, sizeof(node));
-#ifdef HELPER_ARRAY
-		memcpy(node.s, ">>>>", HELPER_ARRAY_SIZE);
-		memcpy(node.e, "<<<<", HELPER_ARRAY_SIZE);
-#endif
 
-		for (i = 0; i < HASH_GROUP_CNT; i++) {
-			if (write(fd, &node, sizeof(record_node_t)) < 0) {
-				hash_error("(%s calls) write node error.", f);
-				goto exit;
+		if (NULL == (hash_value = (void*)calloc(1, s_hash_value_size))) {
+			hash_error("(%s calls) malloc failed.", f);
+			goto close_file;
+		}
+
+		for (i = 0; i < s_hash_slot_cnt; i++) {
+			if (write(fd, &node, sizeof(file_node_t)) < 0) {
+				hash_error("(%s calls) init node error.", f);
+				goto close_file;
+			}
+
+			// 写入真正的内容
+			if (write(fd, hash_value, s_hash_value_size) < 0) {
+				hash_error("(%s calls) init hash_value error.", f);
+				goto close_file;
 			}
 		}
 	}
@@ -157,7 +147,9 @@ int _build_record(const char* f, char* path, uint8_t rebuild) {
 
 close_file:
 	close(fd);
+
 exit:
+	safe_free(hash_value);
 	return ret;
 }
 
@@ -172,7 +164,8 @@ int add_node(char* record_path, node_data_t* data, int (*cb)(node_data_t*, node_
 	uint32_t group = 0;
 	uint32_t new_node_offset = 0;
 	uint32_t offset = 0;
-	record_node_t node;
+	file_node_t node;
+	void* hash_value = NULL;
 
 	if (check_record(record_path) < 0) {
 		hash_error("init record error.");
@@ -184,26 +177,40 @@ int add_node(char* record_path, node_data_t* data, int (*cb)(node_data_t*, node_
 		goto exit;
 	}
 
-	group = data->hash_key % HASH_GROUP_CNT;
-	offset = sizeof(record_property_t) + group * sizeof(record_node_t);
-	memset(&node, 0, sizeof(record_node_t));
+	group = data->hash_key % s_hash_slot_cnt;
+	offset = sizeof(record_property_t) + group * (sizeof(file_node_t) + s_hash_value_size);
+
+	memset(&node, 0, sizeof(file_node_t));
+
+	if (NULL == (hash_value = (void*)calloc(1, s_hash_value_size))) {
+		hash_error("malloc failed.");
+		goto exit;
+	}
 
 	while (offset > 0) {
-		// 拿一个节点数据，取完后文件指针不要挪动
+		/* START 拿一个节点数据，取完后文件指针不要挪动 */
 		if (lseek(fd, offset, SEEK_SET) < 0) {
 			hash_error("seek to %d fail.", offset);
 			goto close_file;
 		}
 
-		if (read(fd, &node, sizeof(record_node_t)) < 0) {
+		if (read(fd, &node, sizeof(file_node_t)) < 0) {
 			hash_error("read node failed.");
 			goto close_file;
 		}
+
+		if (read(fd, hash_value, s_hash_value_size) < 0) {
+			hash_error("read hash_value failed.");
+			goto close_file;
+		}
+
+		node.data.hash_value = hash_value;	// 建立关联，方便后面使用
 
 		if (lseek(fd, offset, SEEK_SET) < 0) {
 			hash_error("seek back to %d fail.", offset);
 			goto close_file;
 		}
+		/* END 拿一个节点数据，取完后文件指针不要挪动 */
 
 		/*
 		used  next_offset  desc
@@ -237,8 +244,8 @@ int add_node(char* record_path, node_data_t* data, int (*cb)(node_data_t*, node_
 
 				node.next_offset = new_node_offset;
 
-				if (write(fd, &node, sizeof(record_node_t)) < 0) {
-					hash_error("init new node error.");
+				if (write(fd, &node, sizeof(file_node_t)) < 0) {
+					hash_error("write node error.");
 					goto close_file;
 				}
 
@@ -255,13 +262,13 @@ int add_node(char* record_path, node_data_t* data, int (*cb)(node_data_t*, node_
 
 			cb(&(node.data), data);
 
-#ifdef HELPER_ARRAY
-			memcpy(node.s, ">>>>", HELPER_ARRAY_SIZE);
-			memcpy(node.e, "<<<<", HELPER_ARRAY_SIZE);
-#endif
+			if (write(fd, &node, sizeof(file_node_t)) < 0) {
+				hash_error("write node error.");
+				goto close_file;
+			}
 
-			if (write(fd, &node, sizeof(record_node_t)) < 0) {
-				hash_error("init new node error.");
+			if (write(fd, node.data.hash_value, s_hash_value_size) < 0) {
+				hash_error("write hash_value error.");
 				goto close_file;
 			}
 
@@ -277,6 +284,7 @@ close_file:
 	close(fd);
 
 exit:
+	safe_free(hash_value);
 	return ret;	
 }
 
@@ -287,7 +295,8 @@ int del_node(char* record_path, node_data_t* data, int (*cb)(node_data_t*, node_
 	uint32_t i = 0;
 	uint32_t group = 0;
 	uint32_t offset = 0;
-	record_node_t node;
+	file_node_t node;
+	void* hash_value = NULL;
 
 	if (access(record_path, F_OK) < 0) {
 		hash_debug("%s not exist.", record_path);
@@ -299,9 +308,15 @@ int del_node(char* record_path, node_data_t* data, int (*cb)(node_data_t*, node_
 		goto exit;
 	}
 
-	group = data->hash_key % HASH_GROUP_CNT;
-	offset = sizeof(record_property_t) + group * sizeof(record_node_t);
-	memset(&node, 0, sizeof(record_node_t));
+	group = data->hash_key % s_hash_slot_cnt;
+	offset = sizeof(record_property_t) + group * (sizeof(file_node_t) + s_hash_value_size);
+
+	memset(&node, 0, sizeof(file_node_t));
+
+	if (NULL == (hash_value = (void*)calloc(1, s_hash_value_size))) {
+		hash_error("malloc failed.");
+		goto exit;
+	}
 
 	while (offset > 0) {
 		if (lseek(fd, offset, SEEK_SET) < 0) {
@@ -309,10 +324,17 @@ int del_node(char* record_path, node_data_t* data, int (*cb)(node_data_t*, node_
 			goto close_file;
 		}
 
-		if (read(fd, &node, sizeof(record_node_t)) < 0) {
+		if (read(fd, &node, sizeof(file_node_t)) < 0) {
 			hash_error("read node failed.");
 			goto close_file;
 		}
+
+		if (read(fd, hash_value, s_hash_value_size) < 0) {
+			hash_error("read hash_value failed.");
+			goto close_file;
+		}
+
+		node.data.hash_value = hash_value;	// 建立关联，方便后面使用
 
 		// 比较的同时，清空node.data中的相关数据
 		if (0 == cb(&(node.data), data)) {
@@ -324,9 +346,14 @@ int del_node(char* record_path, node_data_t* data, int (*cb)(node_data_t*, node_
 				goto close_file;
 			}
 
-			if (write(fd, &node, sizeof(record_node_t)) < 0) {
+			if (write(fd, &node, sizeof(file_node_t)) < 0) {
 				hash_error("del node error.");
 				perror("delete");
+				goto close_file;
+			}
+
+			if (write(fd, node.data.hash_value, s_hash_value_size) < 0) {
+				hash_error("del hash_value error.");
 				goto close_file;
 			}
 
@@ -340,7 +367,9 @@ int del_node(char* record_path, node_data_t* data, int (*cb)(node_data_t*, node_
 
 close_file:
 	close(fd);
+
 exit:
+	safe_free(hash_value);
 	return ret;
 }
 
@@ -348,7 +377,8 @@ void print_nodes(char* path, char* (*cb)(node_data_t*)) {
 	uint8_t i = 0;
 	int fd = 0;
 	off_t offset = 0;
-	record_node_t node;
+	file_node_t node;
+	void* hash_value = NULL;
 	char* cb_res = NULL;
 	static uint8_t s_first_node = 1;
 
@@ -357,11 +387,16 @@ void print_nodes(char* path, char* (*cb)(node_data_t*)) {
 		goto exit;
 	}
 
-	memset(&node, 0, sizeof(record_node_t));
+	memset(&node, 0, sizeof(file_node_t));
 
-	for (i = 0; i < HASH_GROUP_CNT; i++) {
+	if (NULL == (hash_value = (void*)calloc(1, s_hash_value_size))) {
+		hash_error("malloc failed.");
+		goto exit;
+	}
+
+	for (i = 0; i < s_hash_slot_cnt; i++) {
 		s_first_node = 1;
-		if ((offset = lseek(fd, sizeof(record_property_t) + i * sizeof(record_node_t), SEEK_SET)) < 0) {
+		if ((offset = lseek(fd, sizeof(record_property_t) + i * (sizeof(file_node_t) + s_hash_value_size), SEEK_SET)) < 0) {
 			hash_error("skip %s property failed.", path);
 			goto close_file;
 		}
@@ -374,10 +409,17 @@ void print_nodes(char* path, char* (*cb)(node_data_t*)) {
 				goto close_file;
 			}
 
-			if (read(fd, &node, sizeof(record_node_t)) < 0) {
+			if (read(fd, &node, sizeof(file_node_t)) < 0) {
 				hash_error("read node failed.");
 				goto close_file;
 			}
+
+			if (read(fd, hash_value, s_hash_value_size) < 0) {
+				hash_error("read hash_value failed.");
+				goto close_file;
+			}
+
+			node.data.hash_value = hash_value;
 
 			if (s_first_node) {
 				s_first_node = 0;
@@ -388,7 +430,6 @@ void print_nodes(char* path, char* (*cb)(node_data_t*)) {
 			printf("<0x%.2lX> ", offset);
 
 			if (node.used) {
-				//printf("{%d : '%s'}", node.data.book.code, node.data.book.path);
 				if (cb_res = cb(&(node.data))) {
 					printf("%s", cb_res);
 					free(cb_res);
@@ -407,6 +448,11 @@ close_file:
 	close(fd);
 
 exit:
+	safe_free(hash_value);
 	return;
 }
 
+void init_hash_engine(int hash_slot_cnt, int hash_value_size) {
+	s_hash_slot_cnt = hash_slot_cnt;
+	s_hash_value_size = hash_value_size;
+}
