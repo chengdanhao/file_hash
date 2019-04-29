@@ -85,8 +85,7 @@ exit:
 int _build_record(const char* f, char* path, uint8_t rebuild) {
 	int ret = -1;
 	int fd = 0;
-	int n_w = 0;
-	uint8_t i = 0;
+	uint32_t i = 0;
 	uint8_t file_exist = 0;
 	record_property_t prop;
 	file_node_t node;
@@ -159,8 +158,6 @@ exit:
 int add_node(char* record_path, node_data_t* data, int (*cb)(node_data_t*, node_data_t*)) {
 	int ret = -1;
 	int fd = 0;
-	int n_r = 0;
-	uint32_t i = 0;
 	uint32_t group = 0;
 	uint32_t new_node_offset = 0;
 	uint32_t offset = 0;
@@ -221,7 +218,7 @@ int add_node(char* record_path, node_data_t* data, int (*cb)(node_data_t*, node_
 		if (0 == node.used || 0 == node.next_offset) {
 			// 0 0, 首次使用第一个节点
 			if (0 == node.used && 0 == node.next_offset) {
-				hash_info("(FIRST) <0x%x> { %d }", offset, data->hash_key);
+				hash_debug("(FIRST) <0x%x> { %d }", offset, data->hash_key);
 				node.next_offset = 0;
 			}
 
@@ -254,7 +251,7 @@ int add_node(char* record_path, node_data_t* data, int (*cb)(node_data_t*, node_
 
 				node.next_offset = 0;
 
-				hash_info(" (TAIL) <0x%x> { %d } -> <0x%x> { %d }",
+				hash_debug(" (TAIL) <0x%x> { %d } -> <0x%x> { %d }",
 					offset, node.data.hash_key, new_node_offset, data->hash_key);
 			}
 
@@ -291,8 +288,6 @@ exit:
 int del_node(char* record_path, node_data_t* data, int (*cb)(node_data_t*, node_data_t*)) {
 	int ret = -1;
 	int fd = 0;
-	int n_r = 0;
-	uint32_t i = 0;
 	uint32_t group = 0;
 	uint32_t offset = 0;
 	file_node_t node;
@@ -357,13 +352,13 @@ int del_node(char* record_path, node_data_t* data, int (*cb)(node_data_t*, node_
 				goto close_file;
 			}
 
+			ret = 0;
+
 			break;
 		}
 		
 		offset = node.next_offset;
 	}
-
-	ret = 0;
 
 close_file:
 	close(fd);

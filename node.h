@@ -4,23 +4,20 @@
 #include <stdint.h>
 #include "hash.h"
 
-#define RECORD_PATH "record"
+#define PLAYLIST_PATH "playlist"
 
-#define PATH_LEN 94	// 最好是16的倍数减2，方便16进制工具查看
+#define MUSIC_PATH_LEN 200
 
 /*
  * 后续只需要修改这个头文件就可以自定义节点数据，底层代码不用修改
  */
 
 typedef struct {
-	char path[PATH_LEN];
-	uint32_t code;
-} book_t;
+	char path[MUSIC_PATH_LEN];
+} music_t;
 
-#define HASH_GROUP_CNT 3	// 如果为1，就是单链表
-
-int add_book(int book_code, const char* book_path);
-int del_book(int book_code);
-void print_books();
+int add_music(const char* music_path);
+int del_music(const char* music_path);
+void show_playlist();
 
 #endif

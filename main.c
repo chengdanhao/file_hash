@@ -3,51 +3,54 @@
 #include "node.h"
 
 int main() {
-	const book_t books_1[] = {
-		{"0", 0},
-		{"1", 1},
-		{"222", 8},
-		{"11", 4},
-		{"22", 5},
-		{"3", 3},
-		{"111", 7},
-		{"2", 2},
-		{"1111", 10},
-		{"2222", 11},
-		{"33", 6},
-		{"11111", 13},
-		{"333", 9},
+	const music_t playlist_1[] = {
+		{"AAA"},
+		{"BBB"},
+		{"CCC"},
+		{"DDD"},
+		{"EEE"},
+		{"FFF"},
+		{"GGG"},
+		{"HHH"},
+		{"III"},
+		{"JJJ"},
+		{"KKK"},
+		{"LLL"},
+		{"MMM"},
 	};
 
-	const book_t books_2[] = {
-		{"new 35", 35},
-		{"new 33", 33},
-		{"new 34", 34},
-		{"new 30", 30},
-		{"new 13", 13},
-		{"new 11", 11},
-		{"new 9", 9},
+	const music_t playlist_2[] = {
+		{"UUU new"},
+		{"VVV new"},
+		{"WWW new"},
+		{"XXX new"},
+		{"YYY new"},
+		{"ZZZ new"},
 	};
 
-	init_hash_engine(3, sizeof(book_t));
+	init_hash_engine(3, sizeof(music_t));
 
-	printf("%lu books in total.\n", sizeof(books_1) / sizeof(book_t));
-	for (int i = 0; i < sizeof(books_1) / sizeof(book_t); i++) {
-		add_book(books_1[i].code, books_1[i].path);
+	printf("%lu books in total.\n", sizeof(playlist_1) / sizeof(music_t));
+	for (int i = 0; i < sizeof(playlist_1) / sizeof(music_t); i++) {
+		add_music(playlist_1[i].path);
 	}
 
-	print_books();
+	show_playlist();
 
-	del_book(0);
-	del_book(4);
-	del_book(11);
-	del_book(3);
+	del_music("AAA");
+	del_music("AAA");
+	del_music("FFF");
+	del_music("HHH");
+	del_music("GGG");
+	del_music("LLL");
+	del_music("MMM");
+	del_music("ABC");
 
-	print_books();
+	show_playlist();
 
-	for (int i = 0; i < sizeof(books_2) / sizeof(book_t); i++) {
-		add_book(books_2[i].code, books_2[i].path);
+	for (int i = 0; i < sizeof(playlist_2) / sizeof(music_t); i++) {
+		add_music(playlist_2[i].path);
 	}
 
-	print_books();
+	show_playlist();
 }

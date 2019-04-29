@@ -35,24 +35,22 @@
 
 int add_node_cb(node_data_t* file_data, node_data_t* input_data) {
 	file_data->hash_key = input_data->hash_key;
-	memcpy(file_data->hash_value, input_data->hash_value, sizeof(book_t));
+	memcpy(file_data->hash_value, input_data->hash_value, sizeof(music_t));
 	//node_error(">>>> %s , %d.", ((book_t*)(input_data->hash_value))->path, ((book_t*)(input_data->hash_value))->code);
 	return 0;
 }
 
 int del_node_cb(node_data_t* file_data, node_data_t* input_data) {
 	int ret = -1;
-	book_t* file_book = NULL;
-	book_t* input_book = NULL;
+	music_t* file_music = NULL;
+	music_t* input_music = NULL;
 
-	file_book = (book_t*)(file_data->hash_value);
-	input_book = (book_t*)(input_data->hash_value);
+	file_music = (music_t*)(file_data->hash_value);
+	input_music = (music_t*)(input_data->hash_value);
 
-	if (file_book->code == input_book->code) {
-		node_warn("<success> delete book %d (%s).", file_book->code, file_book->path); 
+	if (0 == strncmp(file_music->path, input_music->path, MUSIC_PATH_LEN)) {
 		file_data->hash_key = 0;
-		file_book->code = 0;
-		memset(file_book->path, 0, PATH_LEN);
+		memset(file_music->path, 0, MUSIC_PATH_LEN);
 		ret = 0;
 	}
 
@@ -61,10 +59,10 @@ int del_node_cb(node_data_t* file_data, node_data_t* input_data) {
 
 char* print_node_cb(node_data_t* file_data) {
 	char* res = NULL;
-	int malloc_size = sizeof(node_data_t) + 20;
-	book_t* file_book = NULL;
+	int malloc_size = sizeof(music_t) + 10;
+	music_t* music = NULL;
 
-	file_book = (book_t*)(file_data->hash_value);
+	music = (music_t*)(file_data->hash_value);
 
 	// print_node接口会释放cb中申请的内存
 	if (NULL == (res = (char*)calloc(1, malloc_size))) {
@@ -72,47 +70,57 @@ char* print_node_cb(node_data_t* file_data) {
 		goto exit;
 	}
 
-	snprintf(res, malloc_size, "{%d : '%s'}", file_book->code, file_book->path);
+	snprintf(res, malloc_size, "{ %s }", music->path);
 
 exit:
 	return res;
 }
 
-int add_book(int book_code, const char* book_path) {
+int add_music(const char* music_path) {
 	int ret = -1;
 	node_data_t data;
-	book_t book;
+	music_t music;
 
 	memset(&data, 0, sizeof(data));
-	memset(&book, 0, sizeof(book));
+	memset(&music, 0, sizeof(music));
 
-	book.code = book_code;
-	strncpy(book.path, book_path, sizeof(book.path));
+	strncpy(music.path, music_path, sizeof(music.path));
 
-	data.hash_key = book_code;
-	data.hash_value = &book;
-	ret = add_node(RECORD_PATH, &data, add_node_cb);
+	data.hash_key = music_path[0];
+	data.hash_value = &music;
+	if (0 == (ret = add_node(PLAYLIST_PATH, &data, add_node_cb))) {
+		node_info("add success : %s.", music_path);
+	} else {
+		node_error("add failed : %s.", music_path);
+	}
 
 exit:
 	return ret;
 }
 
-int del_book(int book_code) {
+int del_music(const char* music_path) {
+	int ret = -1;
 	node_data_t data;
-	book_t book;
+	music_t music;
 
 	memset(&data, 0, sizeof(data));
-	memset(&book, 0, sizeof(book));
+	memset(&music, 0, sizeof(music));
 
-	book.code = book_code;
+	strncpy(music.path, music_path, MUSIC_PATH_LEN);
 
-	data.hash_key = book_code;
-	data.hash_value = &book;
+	data.hash_key = music_path[0];
+	data.hash_value = &music;
 
-	return del_node(RECORD_PATH, &data, del_node_cb);
+	if (0 == (ret = del_node(PLAYLIST_PATH, &data, del_node_cb))) {
+		node_info("del success : %s.", music_path);
+	} else {
+		node_error("del failed : %s.", music_path);
+	}
+
+	return ret;
 }
 
-void print_books() {
-	print_nodes(RECORD_PATH, print_node_cb);
+void show_playlist() {
+	print_nodes(PLAYLIST_PATH, print_node_cb);
 }
 
