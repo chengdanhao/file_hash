@@ -69,6 +69,8 @@ exit:
 
 int add_book(int book_code, const char* book_path) {
 	node_data_t data;
+
+	memset(&data, 0, sizeof(data));
 	data.hash_key = data.book.code = book_code;
 	strncpy(data.book.path, book_path, sizeof(data.book.path));
 	return add_node(RECORD_PATH, &data, add_node_cb);

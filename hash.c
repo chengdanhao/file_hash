@@ -102,7 +102,7 @@ exit:
 
 int _build_record(const char* f, char* path, uint8_t rebuild) {
 	int ret = -1;
-	int fd;
+	int fd = 0;
 	int n_w = 0;
 	uint8_t i = 0;
 	uint8_t file_exist = 0;
