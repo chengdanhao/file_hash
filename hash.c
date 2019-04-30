@@ -277,7 +277,7 @@ exit:
 #define check_record(path)		_build_record(__func__, path, 0)
 #define rebuild_record(path)	_build_record(__func__, path, 1)
 
-int add_node(char* record_path, node_data_t* data, int (*cb)(node_data_t*, node_data_t*)) {
+int add_node(char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t*)) {
 	int ret = -1;
 	int fd = 0;
 	uint32_t group = 0;
@@ -288,12 +288,12 @@ int add_node(char* record_path, node_data_t* data, int (*cb)(node_data_t*, node_
 
 	memset(&node, 0, sizeof(file_node_t));
 
-	if (check_record(record_path) < 0) {
+	if (check_record(path) < 0) {
 		hash_error("init record error.");
 		goto exit;
 	}
 
-	group = data->hash_key % s_hash_slot_cnt;
+	group = input->hash_key % s_hash_slot_cnt;
 	offset = (sizeof(hash_property_t) + s_hash_property_size) + group * (sizeof(file_node_t) + s_hash_value_size);
 
 	if (NULL == (hash_value = (void*)calloc(1, s_hash_value_size))) {
@@ -301,8 +301,8 @@ int add_node(char* record_path, node_data_t* data, int (*cb)(node_data_t*, node_
 		goto exit;
 	}
 
-	if ((fd = open(record_path, O_RDWR)) < 0) {
-		hash_error("Open file %s fail.", record_path);
+	if ((fd = open(path, O_RDWR)) < 0) {
+		hash_error("Open file %s fail.", path);
 		goto exit;
 	}
 
@@ -340,14 +340,14 @@ int add_node(char* record_path, node_data_t* data, int (*cb)(node_data_t*, node_
 		if (0 == node.used || 0 == node.next_offset) {
 			// 0 0, 首次使用第一个节点
 			if (0 == node.used && 0 == node.next_offset) {
-				hash_debug("(FIRST) <0x%x> { %d }", offset, data->hash_key);
+				hash_debug("(FIRST) <0x%x> { %d }", offset, input->hash_key);
 				node.next_offset = 0;
 			}
 
 			// 0 1, 被清空过的节点
 			else if (0 == node.used && node.next_offset > 0) {
 				hash_debug(" (USED) <0x%x> { %d } -> <0x%x>",
-					offset, data->hash_key, node.next_offset);
+					offset, input->hash_key, node.next_offset);
 			}
 
 			// 1 0, 已被使用的最后一个节点
@@ -374,12 +374,12 @@ int add_node(char* record_path, node_data_t* data, int (*cb)(node_data_t*, node_
 				node.next_offset = 0;
 
 				hash_debug(" (TAIL) <0x%x> { %d } -> <0x%x> { %d }",
-					offset, node.data.hash_key, new_node_offset, data->hash_key);
+					offset, node.data.hash_key, new_node_offset, input->hash_key);
 			}
 
 			node.used = 1;
 
-			cb(&(node.data), data);
+			cb(&(node.data), input);
 
 			if (write(fd, &node, sizeof(file_node_t)) < 0) {
 				hash_error("write node error.");
@@ -407,7 +407,7 @@ exit:
 	return ret;	
 }
 
-int del_node(char* record_path, node_data_t* data, int (*cb)(node_data_t*, node_data_t*)) {
+int del_node(char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t*)) {
 	int ret = -1;
 	int fd = 0;
 	uint32_t group = 0;
@@ -417,16 +417,16 @@ int del_node(char* record_path, node_data_t* data, int (*cb)(node_data_t*, node_
 
 	memset(&node, 0, sizeof(file_node_t));
 
-	if (access(record_path, F_OK) < 0) {
-		hash_debug("%s not exist.", record_path);
+	if (access(path, F_OK) < 0) {
+		hash_debug("%s not exist.", path);
 		goto exit;
 	}
 
-	group = data->hash_key % s_hash_slot_cnt;
+	group = input->hash_key % s_hash_slot_cnt;
 	offset = (sizeof(hash_property_t) + s_hash_property_size) + group * (sizeof(file_node_t) + s_hash_value_size);
 
-	if ((fd = open(record_path, O_RDWR)) < 0) {
-		hash_error("Open file %s fail.", record_path);
+	if ((fd = open(path, O_RDWR)) < 0) {
+		hash_error("Open file %s fail.", path);
 		goto exit;
 	}
 
@@ -454,7 +454,7 @@ int del_node(char* record_path, node_data_t* data, int (*cb)(node_data_t*, node_
 		node.data.hash_value = hash_value;	// 建立关联，方便后面使用
 
 		// 比较的同时，清空node.data中的相关数据
-		if (0 == cb(&(node.data), data)) {
+		if (0 == cb(&(node.data), input)) {
 			node.used = 0;
 
 			// 移到节点起始位置
@@ -490,7 +490,8 @@ exit:
 	return ret;
 }
 
-void traverse_nodes(char* path, int (*cb)(file_node_t*)) {
+off_t traverse_nodes(char* path, uint8_t silence, node_data_t* input, traverse_action_t (*cb)(file_node_t*, node_data_t*)) {
+	traverse_action_t action = TRAVERSE_DO_NOTHING;
 	uint8_t i = 0;
 	int fd = 0;
 	off_t offset = 0;
@@ -517,7 +518,7 @@ void traverse_nodes(char* path, int (*cb)(file_node_t*)) {
 			goto close_file;
 		}
 
-		printf("[%d]\t", i);
+		if (!silence) { printf("[%d]\t", i); }
 
 		while (offset > 0) {
 			if (lseek(fd, offset, SEEK_SET) < 0) {
@@ -540,16 +541,40 @@ void traverse_nodes(char* path, int (*cb)(file_node_t*)) {
 			if (s_first_node) {
 				s_first_node = 0;
 			} else {
-				printf(" -> ");
+				if (!silence) { printf(" -> "); }
 			}
 
-			printf("<0x%.2lX> ", offset);
+			if (!silence) { printf("<0x%.2lX> ", offset); }
 
-			cb(&node);
+			action = cb(&node, input);
+
+			if (TRAVERSE_UPDATE & action) {
+				// 跳回到节点头部
+				if (lseek(fd, offset, SEEK_SET) < 0) {
+					hash_error("seek to %ld fail.", offset);
+					goto close_file;
+				}
+
+				if (write(fd, &node, sizeof(file_node_t)) < 0) {
+					hash_error("del node error.");
+					perror("delete");
+					goto close_file;
+				}
+
+				if (write(fd, node.data.hash_value, s_hash_value_size) < 0) {
+					hash_error("del hash_value error.");
+					goto close_file;
+				}
+			}
+
+			if (TRAVERSE_BREAK & action) {
+				goto close_file;
+			}
 
 			offset = node.next_offset;
 		}
-		printf("\n");
+
+		if (!silence) { printf("\n"); }
 	}
 
 close_file:
@@ -557,7 +582,7 @@ close_file:
 
 exit:
 	safe_free(hash_value);
-	return;
+	return offset;
 }
 
 void init_hash_engine(int hash_slot_cnt, int hash_value_size, int hash_property_size) {

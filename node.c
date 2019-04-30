@@ -33,22 +33,28 @@
 #define node_error(fmt, ...)
 #endif
 
-int add_node_cb(node_data_t* file_data, node_data_t* input_data) {
-	file_data->hash_key = input_data->hash_key;
-	memcpy(file_data->hash_value, input_data->hash_value, sizeof(music_t));
+enum {
+	WITH_PRINT,
+	WITHOUT_PRINT,
+};
+
+int add_node_cb(node_data_t* file, node_data_t* input) {
+	file->hash_key = input->hash_key;
+	memcpy(file->hash_value, input->hash_value, sizeof(music_t));
 	return 0;
 }
 
-int del_node_cb(node_data_t* file_data, node_data_t* input_data) {
+int del_node_cb(node_data_t* file, node_data_t* input) {
 	int ret = -1;
 	music_t* file_music = NULL;
 	music_t* input_music = NULL;
 
-	file_music = (music_t*)(file_data->hash_value);
-	input_music = (music_t*)(input_data->hash_value);
+	file_music = (music_t*)(file->hash_value);
+	input_music = (music_t*)(input->hash_value);
 
 	if (0 == strncmp(file_music->path, input_music->path, MUSIC_PATH_LEN)) {
-		file_data->hash_key = 0;
+		file->hash_key = 0;
+		file_music->delete_or_not = MUSIC_DELETE;
 		memset(file_music->path, 0, MUSIC_PATH_LEN);
 		ret = 0;
 	}
@@ -56,19 +62,65 @@ int del_node_cb(node_data_t* file_data, node_data_t* input_data) {
 	return ret;
 }
 
-int print_node_cb(file_node_t* node) {
+traverse_action_t print_node_cb(file_node_t* node, node_data_t* input) {
 	music_t* music = NULL;
 
 	music = (music_t*)(node->data.hash_value);
 
 	if (node->used) {
-		printf("{ %s }", music->path);
+		printf("{ %s : %s }", MUSIC_DELETE == music->delete_or_not ? "DELE" : "KEEP", music->path);
 	} else {
 		printf("{ ----- }");
 	}
 
 exit:
-	return 0;
+	return TRAVERSE_DO_NOTHING;
+}
+
+traverse_action_t reset_node_cb(file_node_t* node, node_data_t* input) {
+	music_t* file_music = NULL;
+
+	file_music = (music_t*)(node->data.hash_value);
+
+	if (node->used) {
+		file_music->delete_or_not = MUSIC_DELETE;
+	}
+
+exit:
+	return TRAVERSE_UPDATE;
+}
+
+traverse_action_t clean_node_cb(file_node_t* node, node_data_t* input) {
+	music_t* music = NULL;
+
+	music = (music_t*)(node->data.hash_value);
+
+	if (node->used) {
+		printf("{ %s : %s }", MUSIC_DELETE == music->delete_or_not ? "DELE" : "KEEP", music->path);
+	} else {
+		printf("{ ----- }");
+	}
+
+exit:
+	return TRAVERSE_UPDATE;
+}
+
+// 如果找到，返回1
+traverse_action_t find_node_cb(file_node_t* node, node_data_t* input) {
+	int action = TRAVERSE_DO_NOTHING;
+	music_t* file_music = NULL;
+	music_t* input_music = NULL;
+
+	file_music = (music_t*)(node->data.hash_value);
+	input_music = (music_t*)(input->hash_value);
+
+	if (node->used && 0 == strcmp(file_music->path, input_music->path)) {
+		file_music->delete_or_not = MUSIC_KEEP;
+		action = TRAVERSE_UPDATE | TRAVERSE_BREAK;
+	}
+
+exit:
+	return action;
 }
 
 int get_playlist_cb(hash_property_t* file, hash_property_t* output) {
@@ -91,10 +143,18 @@ int add_music(const char* music_path) {
 	int ret = -1;
 	node_data_t data;
 	music_t music;
+	off_t offset = 0;
+
+	if ((offset = is_music_exist(music_path)) > 0) {
+		node_warn("already exist '%s'", music_path);
+		ret = 0;
+		goto exit;
+	}
 
 	memset(&data, 0, sizeof(data));
 	memset(&music, 0, sizeof(music));
 
+	music.delete_or_not = MUSIC_KEEP;
 	strncpy(music.path, music_path, sizeof(music.path));
 
 	data.hash_key = music_path[0];
@@ -118,6 +178,7 @@ int del_music(const char* music_path) {
 	memset(&data, 0, sizeof(data));
 	memset(&music, 0, sizeof(music));
 
+	music.delete_or_not = MUSIC_DELETE;
 	strncpy(music.path, music_path, MUSIC_PATH_LEN);
 
 	data.hash_key = music_path[0];
@@ -133,7 +194,32 @@ int del_music(const char* music_path) {
 }
 
 void show_playlist() {
-	traverse_nodes(PLAYLIST_PATH, print_node_cb);
+	traverse_nodes(PLAYLIST_PATH, WITH_PRINT, NULL, print_node_cb);
+}
+
+void reset_playlist() {
+	traverse_nodes(PLAYLIST_PATH, WITHOUT_PRINT, NULL, reset_node_cb);
+}
+
+void clean_playlist() {
+	traverse_nodes(PLAYLIST_PATH, WITH_PRINT, NULL, clean_node_cb);
+}
+
+off_t is_music_exist(const char* music_path) {
+	node_data_t data;
+	music_t music;
+
+	memset(&data, 0, sizeof(data));
+	memset(&music, 0, sizeof(music));
+
+	strncpy(music.path, music_path, MUSIC_PATH_LEN);
+
+	data.hash_value = &music;
+
+	return traverse_nodes(PLAYLIST_PATH, WITHOUT_PRINT, &data, find_node_cb);
+}
+
+void update_playlist() {
 }
 
 void get_playlist_prop() {
