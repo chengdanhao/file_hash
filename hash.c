@@ -329,17 +329,22 @@ int add_node(char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t
 		 0		  1 	   被清空过的节点
 		 1		  0 	   已被使用的最后一个节点
 		*/
+#define MORE_ADD_NODE_INFO 0
 		if (0 == node.used || 0 == node.next_offset) {
 			// 0 0, 首次使用第一个节点
 			if (0 == node.used && 0 == node.next_offset) {
+#if MORE_ADD_NODE_INFO
 				hash_debug("(FIRST) <0x%x> { %d }", offset, input->hash_key);
+#endif
 				node.next_offset = 0;
 			}
 
 			// 0 1, 被清空过的节点
 			else if (0 == node.used && node.next_offset > 0) {
+#if MORE_ADD_NODE_INFO
 				hash_debug(" (USED) <0x%x> { %d } -> <0x%x>",
 					offset, input->hash_key, node.next_offset);
+#endif
 			}
 
 			// 1 0, 已被使用的最后一个节点
@@ -365,9 +370,12 @@ int add_node(char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t
 
 				node.next_offset = 0;
 
+#if MORE_ADD_NODE_INFO
 				hash_debug(" (TAIL) <0x%x> { %d } -> <0x%x> { %d }",
 					offset, node.data.hash_key, new_node_offset, input->hash_key);
+#endif
 			}
+#undef MORE_ADD_NODE_INFO
 
 			node.used = 1;
 
@@ -482,7 +490,7 @@ exit:
 	return ret;
 }
 
-off_t traverse_nodes(char* path, uint8_t silence, node_data_t* input, traverse_action_t (*cb)(file_node_t*, node_data_t*)) {
+off_t traverse_nodes(char* path, print_t print, node_data_t* input, traverse_action_t (*cb)(file_node_t*, node_data_t*)) {
 	traverse_action_t action = TRAVERSE_DO_NOTHING;
 	uint8_t i = 0;
 	int fd = 0;
@@ -510,7 +518,7 @@ off_t traverse_nodes(char* path, uint8_t silence, node_data_t* input, traverse_a
 			goto close_file;
 		}
 
-		if (!silence) { printf("[%d]\t", i); }
+		if (WITH_PRINT == print) { printf("[%d]\t", i); }
 
 		while (offset > 0) {
 			if (lseek(fd, offset, SEEK_SET) < 0) {
@@ -533,10 +541,10 @@ off_t traverse_nodes(char* path, uint8_t silence, node_data_t* input, traverse_a
 			if (s_first_node) {
 				s_first_node = 0;
 			} else {
-				if (!silence) { printf(" -> "); }
+				if (WITH_PRINT == print) { printf(" -> "); }
 			}
 
-			if (!silence) { printf("<0x%.2lX> ", offset); }
+			if (WITH_PRINT == print) { printf("<0x%.2lX> ", offset); }
 
 			action = cb(&node, input);
 
@@ -566,7 +574,7 @@ off_t traverse_nodes(char* path, uint8_t silence, node_data_t* input, traverse_a
 			offset = node.next_offset;
 		}
 
-		if (!silence) { printf("\n"); }
+		if (WITH_PRINT == print) { printf("\n"); }
 	}
 
 close_file:

@@ -33,11 +33,6 @@
 #define node_error(fmt, ...)
 #endif
 
-enum {
-	WITH_PRINT,
-	WITHOUT_PRINT,
-};
-
 int add_node_cb(node_data_t* file, node_data_t* input) {
 	file->hash_key = input->hash_key;
 	memcpy(file->hash_value, input->hash_value, sizeof(music_t));
@@ -68,7 +63,11 @@ traverse_action_t print_node_cb(file_node_t* node, node_data_t* input) {
 	music = (music_t*)(node->data.hash_value);
 
 	if (node->used) {
-		printf("{ %s : %s }", MUSIC_DELETE == music->delete_or_not ? "DELE" : "KEEP", music->path);
+		if (MUSIC_DELETE == music->delete_or_not) {
+			printf("{ DEL : %s }", music->path);
+		} else {
+			printf("{ %s }", music->path);
+		}
 	} else {
 		printf("{ ----- }");
 	}
@@ -91,14 +90,15 @@ exit:
 }
 
 traverse_action_t clean_node_cb(file_node_t* node, node_data_t* input) {
-	music_t* music = NULL;
+	music_t* file_music = NULL;
 
-	music = (music_t*)(node->data.hash_value);
+	file_music = (music_t*)(node->data.hash_value);
 
-	if (node->used) {
-		printf("{ %s : %s }", MUSIC_DELETE == music->delete_or_not ? "DELE" : "KEEP", music->path);
-	} else {
-		printf("{ ----- }");
+	if (node->used && MUSIC_DELETE == file_music->delete_or_not) {
+		node_warn("delete %s.", file_music->path);
+		node->used = 0;
+		node->data.hash_key = 0;
+		memset(node->data.hash_value, 0, sizeof(music_t));
 	}
 
 exit:
@@ -146,7 +146,7 @@ int add_music(const char* music_path) {
 	off_t offset = 0;
 
 	if ((offset = is_music_exist(music_path)) > 0) {
-		node_warn("already exist '%s'", music_path);
+		node_debug("already exist '%s'", music_path);
 		ret = 0;
 		goto exit;
 	}
@@ -202,7 +202,7 @@ void reset_playlist() {
 }
 
 void clean_playlist() {
-	traverse_nodes(PLAYLIST_PATH, WITH_PRINT, NULL, clean_node_cb);
+	traverse_nodes(PLAYLIST_PATH, WITHOUT_PRINT, NULL, clean_node_cb);
 }
 
 off_t is_music_exist(const char* music_path) {
@@ -217,9 +217,6 @@ off_t is_music_exist(const char* music_path) {
 	data.hash_value = &music;
 
 	return traverse_nodes(PLAYLIST_PATH, WITHOUT_PRINT, &data, find_node_cb);
-}
-
-void update_playlist() {
 }
 
 void get_playlist_prop() {
@@ -250,5 +247,4 @@ void set_playlist_prop(playlist_prop_t* playlist_prop) {
 
 void check_playlist() {
 	check_hash_file(PLAYLIST_PATH);
-	//_build_hash_file(__func__, PLAYLIST_PATH, 0)
 }
