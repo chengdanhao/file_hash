@@ -36,7 +36,6 @@
 int add_node_cb(node_data_t* file_data, node_data_t* input_data) {
 	file_data->hash_key = input_data->hash_key;
 	memcpy(file_data->hash_value, input_data->hash_value, sizeof(music_t));
-	//node_error(">>>> %s , %d.", ((book_t*)(input_data->hash_value))->path, ((book_t*)(input_data->hash_value))->code);
 	return 0;
 }
 
@@ -72,6 +71,22 @@ exit:
 	return 0;
 }
 
+int get_playlist_cb(hash_property_t* file, hash_property_t* output) {
+	playlist_prop_t* file_playlist = (playlist_prop_t*)(file->prop);
+	playlist_prop_t* output_playlist = (playlist_prop_t*)(output->prop);
+
+	output_playlist->reserved = file_playlist->reserved;
+	output_playlist->which_album_to_handle = file_playlist->which_album_to_handle;
+}
+
+int set_playlist_cb(hash_property_t* file, hash_property_t* input) {
+	playlist_prop_t* file_playlist = (playlist_prop_t*)(file->prop);
+	playlist_prop_t* input_playlist = (playlist_prop_t*)(input->prop);
+
+	file_playlist->reserved = input_playlist->reserved;
+	file_playlist->which_album_to_handle = input_playlist->which_album_to_handle;
+}
+
 int add_music(const char* music_path) {
 	int ret = -1;
 	node_data_t data;
@@ -84,6 +99,7 @@ int add_music(const char* music_path) {
 
 	data.hash_key = music_path[0];
 	data.hash_value = &music;
+
 	if (0 == (ret = add_node(PLAYLIST_PATH, &data, add_node_cb))) {
 		node_info("add success : %s.", music_path);
 	} else {
@@ -118,5 +134,31 @@ int del_music(const char* music_path) {
 
 void show_playlist() {
 	traverse_nodes(PLAYLIST_PATH, print_node_cb);
+}
+
+void get_playlist_prop() {
+	hash_property_t hash_prop;
+	playlist_prop_t playlist_prop;
+
+	memset(&hash_prop, 0, sizeof(hash_property_t));
+	memset(&playlist_prop, 0, sizeof(playlist_prop));
+
+	hash_prop.prop = &playlist_prop;
+
+	get_hash_prop(PLAYLIST_PATH, &hash_prop, get_playlist_cb);
+
+	node_info("<GET> 0x%x %d.", playlist_prop.reserved, playlist_prop.which_album_to_handle);
+}
+
+void set_playlist_prop(playlist_prop_t* playlist_prop) {
+	hash_property_t hash_prop;
+
+	node_info("<SET> 0x%x %d.", playlist_prop->reserved, playlist_prop->which_album_to_handle);
+
+	memset(&hash_prop, 0, sizeof(hash_property_t));
+
+	hash_prop.prop = playlist_prop;
+
+	set_hash_prop(PLAYLIST_PATH, &hash_prop, set_playlist_cb);
 }
 

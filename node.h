@@ -13,11 +13,18 @@
  */
 
 typedef struct {
+	uint32_t which_album_to_handle;
+	uint32_t reserved;
+} playlist_prop_t;
+
+typedef struct {
 	char path[MUSIC_PATH_LEN];
 } music_t;
 
 int add_music(const char* music_path);
 int del_music(const char* music_path);
 void show_playlist();
+void get_playlist_prop();
+void set_playlist_prop(playlist_prop_t* playlist_prop);
 
 #endif

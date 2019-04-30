@@ -38,6 +38,7 @@
 
 static uint32_t s_hash_slot_cnt;
 static uint32_t s_hash_value_size;
+static uint32_t s_hash_property_size;
 
 ssize_t happy_write(const char* f, int fd, void *buf, size_t count) {
 	int ret = -1;
@@ -82,10 +83,17 @@ exit:
 #define write(fd, buf, count)	happy_write(__func__, fd, buf, count)
 #define read(fd, buf, count)	happy_read(__func__, fd, buf, count)
 
-int get_record_prop(char* path, record_property_t* prop) {
+int get_hash_prop(char* path, hash_property_t* output, int (*cb)(hash_property_t*, hash_property_t*)) {
 	int fd = 0;
 	int ret = -1;
 	int curr_offset = 0;
+	hash_property_t prop;
+	void* prop_content = NULL;
+
+	if (NULL == (prop_content = (void*)calloc(1, s_hash_property_size))) {
+		hash_error("malloc failed.");
+		goto exit;
+	}
 
 	if ((fd = open(path, O_RDONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0) {
 		hash_error("create file %s fail.", path);
@@ -102,33 +110,50 @@ int get_record_prop(char* path, record_property_t* prop) {
 		goto close_file;
 	}
 
-	if (read(fd, prop, sizeof(record_property_t)) < 0) {
-		hash_error("read prop error.");
+	if (read(fd, &prop, sizeof(hash_property_t)) < 0) {
+		hash_error("read hash_prop error.");
 		goto close_file;
 	}
+
+	if (read(fd, prop_content, s_hash_property_size) < 0) {
+		hash_error("read hash_prop_content error.");
+		goto close_file;
+	}
+
+	prop.prop = prop_content;
+
+	cb(&prop, output);
 
 	if (lseek(fd, curr_offset, SEEK_SET) < 0) {
 		hash_error("seek back to %d fail.", curr_offset);
 		goto close_file;
 	}
 
-	hash_info("0x%x %d.", prop->reserved, prop->which_album_to_add);
-
 close_file:
 	close(fd);
 
 exit:
+	safe_free(prop_content);
 	return ret;
 
 }
 
-int set_record_prop(char* path, record_property_t* prop) {
+int set_hash_prop(char* path, hash_property_t* input, int (*cb)(hash_property_t*, hash_property_t*)) {
 	int fd = 0;
 	int ret = -1;
 	int curr_offset = 0;
+	hash_property_t prop;
+	void *prop_content = NULL;
 
-	if ((fd = open(path, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0) {
-		hash_error("create file %s fail.", path);
+	memset(&prop, 0, sizeof(hash_property_t));
+
+	if (NULL == (prop_content = (void*)calloc(1, s_hash_property_size))) {
+		hash_error("malloc failed.");
+		goto exit;
+	}
+
+	if ((fd = open(path, O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0) {
+		hash_error("open file %s fail.", path);
 		goto exit;
 	}
 
@@ -142,8 +167,17 @@ int set_record_prop(char* path, record_property_t* prop) {
 		goto close_file;
 	}
 
-	if (write(fd, prop, sizeof(record_property_t)) < 0) {
+	prop.prop = prop_content;
+
+	cb(&prop, input);
+
+	if (write(fd, &prop, sizeof(hash_property_t)) < 0) {
 		hash_error("write prop error.");
+		goto close_file;
+	}
+
+	if (write(fd, prop.prop, s_hash_property_size) < 0) {
+		hash_error("write prop_content error.");
 		goto close_file;
 	}
 
@@ -152,12 +186,11 @@ int set_record_prop(char* path, record_property_t* prop) {
 		goto close_file;
 	}
 
-	hash_info("0x%x %d.", prop->reserved, prop->which_album_to_add);
-
 close_file:
 	close(fd);
 
 exit:
+	safe_free(prop_content);
 	return ret;
 }
 
@@ -166,9 +199,13 @@ int _build_record(const char* f, char* path, uint8_t rebuild) {
 	int fd = 0;
 	uint32_t i = 0;
 	uint8_t file_exist = 0;
-	record_property_t prop;
+	hash_property_t prop;
+	void* prop_content = NULL;
 	file_node_t node;
 	void* hash_value = NULL;
+
+	memset(&prop, 0, sizeof(hash_property_t));
+	memset(&node, 0, sizeof(file_node_t));
 
 	if (access(path, F_OK) < 0) {
 		hash_debug("(%s calls) %s not exist.", f, path);
@@ -188,23 +225,25 @@ int _build_record(const char* f, char* path, uint8_t rebuild) {
 	}
 
 	if (0 == file_exist) {
-		memset(&prop, 0, sizeof(record_property_t));
-
-		prop.which_album_to_add = 3;
-		prop.reserved = 0x12345678;
-		set_record_prop(path, &prop);
-
 		if ((fd = open(path, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0) {
 			hash_error("(%s calls) create file %s fail.", f, path);
 			goto exit;
 		}
 
-		if (lseek(fd, sizeof(record_property_t), SEEK_SET) < 0) {
-			hash_error("skip property failed : %ld.", sizeof(record_property_t));
+		if (NULL == (prop_content = (void*)calloc(1, s_hash_property_size))) {
+			hash_error("malloc failed.");
+			goto exit;
+		}
+
+		if (write(fd, &prop, sizeof(hash_property_t)) < 0) {
+			hash_error("(%s calls) write prop error.", f);
 			goto close_file;
 		}
 
-		memset(&node, 0, sizeof(file_node_t));
+		if (write(fd, prop_content, s_hash_property_size) < 0) {
+			hash_error("(%s calls) write prop error.", f);
+			goto close_file;
+		}
 
 		if (NULL == (hash_value = (void*)calloc(1, s_hash_value_size))) {
 			hash_error("(%s calls) malloc failed.", f);
@@ -217,7 +256,6 @@ int _build_record(const char* f, char* path, uint8_t rebuild) {
 				goto close_file;
 			}
 
-			// 写入真正的内容
 			if (write(fd, hash_value, s_hash_value_size) < 0) {
 				hash_error("(%s calls) init hash_value error.", f);
 				goto close_file;
@@ -231,6 +269,7 @@ close_file:
 	close(fd);
 
 exit:
+	safe_free(prop_content);
 	safe_free(hash_value);
 	return ret;
 }
@@ -247,23 +286,23 @@ int add_node(char* record_path, node_data_t* data, int (*cb)(node_data_t*, node_
 	file_node_t node;
 	void* hash_value = NULL;
 
+	memset(&node, 0, sizeof(file_node_t));
+
 	if (check_record(record_path) < 0) {
 		hash_error("init record error.");
 		goto exit;
 	}
 
-	if ((fd = open(record_path, O_RDWR)) < 0) {
-		hash_error("Open file %s fail.", record_path);
-		goto exit;
-	}
-
 	group = data->hash_key % s_hash_slot_cnt;
-	offset = sizeof(record_property_t) + group * (sizeof(file_node_t) + s_hash_value_size);
-
-	memset(&node, 0, sizeof(file_node_t));
+	offset = (sizeof(hash_property_t) + s_hash_property_size) + group * (sizeof(file_node_t) + s_hash_value_size);
 
 	if (NULL == (hash_value = (void*)calloc(1, s_hash_value_size))) {
 		hash_error("malloc failed.");
+		goto exit;
+	}
+
+	if ((fd = open(record_path, O_RDWR)) < 0) {
+		hash_error("Open file %s fail.", record_path);
 		goto exit;
 	}
 
@@ -376,20 +415,20 @@ int del_node(char* record_path, node_data_t* data, int (*cb)(node_data_t*, node_
 	file_node_t node;
 	void* hash_value = NULL;
 
+	memset(&node, 0, sizeof(file_node_t));
+
 	if (access(record_path, F_OK) < 0) {
 		hash_debug("%s not exist.", record_path);
 		goto exit;
 	}
 
+	group = data->hash_key % s_hash_slot_cnt;
+	offset = (sizeof(hash_property_t) + s_hash_property_size) + group * (sizeof(file_node_t) + s_hash_value_size);
+
 	if ((fd = open(record_path, O_RDWR)) < 0) {
 		hash_error("Open file %s fail.", record_path);
 		goto exit;
 	}
-
-	group = data->hash_key % s_hash_slot_cnt;
-	offset = sizeof(record_property_t) + group * (sizeof(file_node_t) + s_hash_value_size);
-
-	memset(&node, 0, sizeof(file_node_t));
 
 	if (NULL == (hash_value = (void*)calloc(1, s_hash_value_size))) {
 		hash_error("malloc failed.");
@@ -473,7 +512,7 @@ void traverse_nodes(char* path, int (*cb)(file_node_t*)) {
 
 	for (i = 0; i < s_hash_slot_cnt; i++) {
 		s_first_node = 1;
-		if ((offset = lseek(fd, sizeof(record_property_t) + i * (sizeof(file_node_t) + s_hash_value_size), SEEK_SET)) < 0) {
+		if ((offset = lseek(fd, (sizeof(hash_property_t) + s_hash_property_size) + i * (sizeof(file_node_t) + s_hash_value_size), SEEK_SET)) < 0) {
 			hash_error("skip %s property failed.", path);
 			goto close_file;
 		}
@@ -521,7 +560,10 @@ exit:
 	return;
 }
 
-void init_hash_engine(int hash_slot_cnt, int hash_value_size) {
+void init_hash_engine(int hash_slot_cnt, int hash_value_size, int hash_property_size) {
 	s_hash_slot_cnt = hash_slot_cnt;
 	s_hash_value_size = hash_value_size;
+	s_hash_property_size = hash_property_size;
+	hash_info("hash_slot_cnt = %d, hash_value_size = %d, hash_property_size = %d.",
+		hash_slot_cnt, hash_value_size, hash_property_size);
 }
