@@ -3,6 +3,8 @@
 #include "node.h"
 
 int main() {
+	record_property_t prop;
+
 	const music_t playlist_1[] = {
 		{"AAA"},
 		{"BBB"},
@@ -39,9 +41,14 @@ int main() {
 
 	del_music("AAA");
 	del_music("AAA");
+	get_record_prop(PLAYLIST_PATH, &prop);
+	prop.which_album_to_add = 9;
+	prop.reserved = 0xaabbccdd;
+	set_record_prop(PLAYLIST_PATH, &prop);
 	del_music("FFF");
 	del_music("HHH");
 	del_music("GGG");
+	get_record_prop(PLAYLIST_PATH, &prop);
 	del_music("LLL");
 	del_music("MMM");
 	del_music("ABC");
@@ -53,4 +60,6 @@ int main() {
 	}
 
 	show_playlist();
+
+	get_record_prop(PLAYLIST_PATH, &prop);
 }

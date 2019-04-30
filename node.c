@@ -57,23 +57,19 @@ int del_node_cb(node_data_t* file_data, node_data_t* input_data) {
 	return ret;
 }
 
-char* print_node_cb(node_data_t* file_data) {
-	char* res = NULL;
-	int malloc_size = sizeof(music_t) + 10;
+int print_node_cb(file_node_t* node) {
 	music_t* music = NULL;
 
-	music = (music_t*)(file_data->hash_value);
+	music = (music_t*)(node->data.hash_value);
 
-	// print_node接口会释放cb中申请的内存
-	if (NULL == (res = (char*)calloc(1, malloc_size))) {
-		node_error("malloc failed.");
-		goto exit;
+	if (node->used) {
+		printf("{ %s }", music->path);
+	} else {
+		printf("{ ----- }");
 	}
 
-	snprintf(res, malloc_size, "{ %s }", music->path);
-
 exit:
-	return res;
+	return 0;
 }
 
 int add_music(const char* music_path) {
@@ -121,6 +117,6 @@ int del_music(const char* music_path) {
 }
 
 void show_playlist() {
-	print_nodes(PLAYLIST_PATH, print_node_cb);
+	traverse_nodes(PLAYLIST_PATH, print_node_cb);
 }
 

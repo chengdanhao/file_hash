@@ -82,6 +82,85 @@ exit:
 #define write(fd, buf, count)	happy_write(__func__, fd, buf, count)
 #define read(fd, buf, count)	happy_read(__func__, fd, buf, count)
 
+int get_record_prop(char* path, record_property_t* prop) {
+	int fd = 0;
+	int ret = -1;
+	int curr_offset = 0;
+
+	if ((fd = open(path, O_RDONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0) {
+		hash_error("create file %s fail.", path);
+		goto exit;
+	}
+
+	if ((curr_offset = lseek(fd, 0, SEEK_CUR)) < 0) {
+		hash_error("seek to %d fail.", curr_offset);
+		goto close_file;
+	}
+
+	if (lseek(fd, 0, SEEK_SET) < 0) {
+		hash_error("seek to head fail.");
+		goto close_file;
+	}
+
+	if (read(fd, prop, sizeof(record_property_t)) < 0) {
+		hash_error("read prop error.");
+		goto close_file;
+	}
+
+	if (lseek(fd, curr_offset, SEEK_SET) < 0) {
+		hash_error("seek back to %d fail.", curr_offset);
+		goto close_file;
+	}
+
+	hash_info("0x%x %d.", prop->reserved, prop->which_album_to_add);
+
+close_file:
+	close(fd);
+
+exit:
+	return ret;
+
+}
+
+int set_record_prop(char* path, record_property_t* prop) {
+	int fd = 0;
+	int ret = -1;
+	int curr_offset = 0;
+
+	if ((fd = open(path, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0) {
+		hash_error("create file %s fail.", path);
+		goto exit;
+	}
+
+	if ((curr_offset = lseek(fd, 0, SEEK_CUR)) < 0) {
+		hash_error("seek to %d fail.", curr_offset);
+		goto close_file;
+	}
+
+	if (lseek(fd, 0, SEEK_SET) < 0) {
+		hash_error("seek to head fail.");
+		goto close_file;
+	}
+
+	if (write(fd, prop, sizeof(record_property_t)) < 0) {
+		hash_error("write prop error.");
+		goto close_file;
+	}
+
+	if (lseek(fd, curr_offset, SEEK_SET) < 0) {
+		hash_error("seek back to %d fail.", curr_offset);
+		goto close_file;
+	}
+
+	hash_info("0x%x %d.", prop->reserved, prop->which_album_to_add);
+
+close_file:
+	close(fd);
+
+exit:
+	return ret;
+}
+
 int _build_record(const char* f, char* path, uint8_t rebuild) {
 	int ret = -1;
 	int fd = 0;
@@ -109,19 +188,23 @@ int _build_record(const char* f, char* path, uint8_t rebuild) {
 	}
 
 	if (0 == file_exist) {
+		memset(&prop, 0, sizeof(record_property_t));
+
+		prop.which_album_to_add = 3;
+		prop.reserved = 0x12345678;
+		set_record_prop(path, &prop);
+
 		if ((fd = open(path, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0) {
 			hash_error("(%s calls) create file %s fail.", f, path);
 			goto exit;
 		}
 
-		memset(&prop, 0, sizeof(record_property_t));
-		prop.reserved = 0x12345678;
-		if (write(fd, &prop, sizeof(record_property_t)) < 0) {
-			hash_error("(%s calls) write prop error.", f);
+		if (lseek(fd, sizeof(record_property_t), SEEK_SET) < 0) {
+			hash_error("skip property failed : %ld.", sizeof(record_property_t));
 			goto close_file;
 		}
 
-		memset(&node, 0, sizeof(node));
+		memset(&node, 0, sizeof(file_node_t));
 
 		if (NULL == (hash_value = (void*)calloc(1, s_hash_value_size))) {
 			hash_error("(%s calls) malloc failed.", f);
@@ -368,13 +451,12 @@ exit:
 	return ret;
 }
 
-void print_nodes(char* path, char* (*cb)(node_data_t*)) {
+void traverse_nodes(char* path, int (*cb)(file_node_t*)) {
 	uint8_t i = 0;
 	int fd = 0;
 	off_t offset = 0;
 	file_node_t node;
 	void* hash_value = NULL;
-	char* cb_res = NULL;
 	static uint8_t s_first_node = 1;
 
 	if ((fd = open(path, O_RDWR)) < 0) {
@@ -424,15 +506,7 @@ void print_nodes(char* path, char* (*cb)(node_data_t*)) {
 
 			printf("<0x%.2lX> ", offset);
 
-			if (node.used) {
-				if (cb_res = cb(&(node.data))) {
-					printf("%s", cb_res);
-					free(cb_res);
-					cb_res = NULL;
-				}
-			} else {
-				printf("{ ----- }");
-			}
+			cb(&node);
 
 			offset = node.next_offset;
 		}
