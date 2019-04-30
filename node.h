@@ -36,5 +36,6 @@ void reset_playlist();
 off_t is_music_exist(const char* music_path);
 void get_playlist_prop();
 void set_playlist_prop(playlist_prop_t* playlist_prop);
+void check_playlist();
 
 #endif

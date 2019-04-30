@@ -248,3 +248,7 @@ void set_playlist_prop(playlist_prop_t* playlist_prop) {
 	set_hash_prop(PLAYLIST_PATH, &hash_prop, set_playlist_cb);
 }
 
+void check_playlist() {
+	check_hash_file(PLAYLIST_PATH);
+	//_build_hash_file(__func__, PLAYLIST_PATH, 0)
+}

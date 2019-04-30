@@ -194,7 +194,7 @@ exit:
 	return ret;
 }
 
-int _build_record(const char* f, char* path, uint8_t rebuild) {
+int _build_hash_file(const char* f, char* path, uint8_t rebuild) {
 	int ret = -1;
 	int fd = 0;
 	uint32_t i = 0;
@@ -274,9 +274,6 @@ exit:
 	return ret;
 }
 
-#define check_record(path)		_build_record(__func__, path, 0)
-#define rebuild_record(path)	_build_record(__func__, path, 1)
-
 int add_node(char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t*)) {
 	int ret = -1;
 	int fd = 0;
@@ -287,11 +284,6 @@ int add_node(char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t
 	void* hash_value = NULL;
 
 	memset(&node, 0, sizeof(file_node_t));
-
-	if (check_record(path) < 0) {
-		hash_error("init record error.");
-		goto exit;
-	}
 
 	group = input->hash_key % s_hash_slot_cnt;
 	offset = (sizeof(hash_property_t) + s_hash_property_size) + group * (sizeof(file_node_t) + s_hash_value_size);

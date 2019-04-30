@@ -33,6 +33,8 @@ int main() {
 
 	init_hash_engine(1, sizeof(music_t), sizeof(playlist_prop_t));
 
+	check_playlist();
+
 	printf("%lu books in total.\n", sizeof(playlist_1) / sizeof(char*));
 	for (int i = 0; i < sizeof(playlist_1) / sizeof(char*); i++) {
 		add_music(playlist_1[i]);
