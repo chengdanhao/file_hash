@@ -36,9 +36,9 @@
 #define hash_error(fmt, ...)
 #endif
 
-static uint32_t s_hash_slot_cnt;
-static uint32_t s_hash_value_size;
-static uint32_t s_hash_property_size;
+static int s_hash_slot_cnt;
+static int s_hash_value_size;
+static int s_hash_property_size;
 
 ssize_t happy_write(const char* f, int fd, void *buf, size_t count) {
 	int ret = -1;
@@ -490,21 +490,25 @@ exit:
 	return ret;
 }
 
-off_t traverse_nodes(char* path, print_t print, node_data_t* input, traverse_action_t (*cb)(file_node_t*, node_data_t*)) {
-	traverse_action_t action = TRAVERSE_DO_NOTHING;
+// traverse_type 为 TRAVERSE_ALL 时，hash_key可随意填写
+off_t traverse_nodes(char* path, traverse_type_t traverse_type, int hash_key, print_t print, node_data_t* input, traverse_action_t (*cb)(file_node_t*, node_data_t*)) {
+	traverse_action_t action = TRAVERSE_ACTION_DO_NOTHING;
 	uint8_t i = 0;
 	int fd = 0;
+	uint32_t group = 0;
 	off_t offset = 0;
 	file_node_t node;
 	void* hash_value = NULL;
 	static uint8_t s_first_node = 1;
 
+	memset(&node, 0, sizeof(file_node_t));
+
+	group = hash_key % s_hash_slot_cnt;
+
 	if ((fd = open(path, O_RDWR)) < 0) {
 		hash_error("Open %s fail.", path);
 		goto exit;
 	}
-
-	memset(&node, 0, sizeof(file_node_t));
 
 	if (NULL == (hash_value = (void*)calloc(1, s_hash_value_size))) {
 		hash_error("malloc failed.");
@@ -512,6 +516,12 @@ off_t traverse_nodes(char* path, print_t print, node_data_t* input, traverse_act
 	}
 
 	for (i = 0; i < s_hash_slot_cnt; i++) {
+
+		// TODO: hash_key和i的关系不一定可以直接比较，后续版本需要完善
+		if (TRAVERSE_SPECIFIC_HASH_KEY == traverse_type && i != group) {
+			continue;
+		}
+
 		s_first_node = 1;
 		if ((offset = lseek(fd, (sizeof(hash_property_t) + s_hash_property_size) + i * (sizeof(file_node_t) + s_hash_value_size), SEEK_SET)) < 0) {
 			hash_error("skip %s property failed.", path);
@@ -548,7 +558,7 @@ off_t traverse_nodes(char* path, print_t print, node_data_t* input, traverse_act
 
 			action = cb(&node, input);
 
-			if (TRAVERSE_UPDATE & action) {
+			if (TRAVERSE_ACTION_UPDATE & action) {
 				// 跳回到节点头部
 				if (lseek(fd, offset, SEEK_SET) < 0) {
 					hash_error("seek to %ld fail.", offset);
@@ -567,7 +577,7 @@ off_t traverse_nodes(char* path, print_t print, node_data_t* input, traverse_act
 				}
 			}
 
-			if (TRAVERSE_BREAK & action) {
+			if (TRAVERSE_ACTION_BREAK & action) {
 				goto close_file;
 			}
 

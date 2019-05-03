@@ -19,8 +19,8 @@ typedef enum {
 } action_t;
 
 typedef struct {
+	int reserved;
 	uint32_t which_album_to_handle;
-	uint32_t reserved;
 } playlist_prop_t;
 
 typedef struct {
@@ -28,14 +28,14 @@ typedef struct {
 	char path[MUSIC_PATH_LEN];
 } music_t;
 
-int add_music(const char* music_path);
-int del_music(const char* music_path);
+int add_music(int hash_key, const char* music_path);
+int del_music(int hash_key, const char* music_path);
 void show_playlist();
-void clean_playlist();
-void reset_playlist();
-off_t is_music_exist(const char* music_path);
-void get_playlist_prop();
+void clean_playlist(int hash_key);
+void reset_playlist(int hash_key);
+void get_playlist_prop(playlist_prop_t* playlist_prop);
 void set_playlist_prop(playlist_prop_t* playlist_prop);
 void check_playlist();
+void rebuild_playlist();
 
 #endif
