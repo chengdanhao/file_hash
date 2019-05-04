@@ -66,33 +66,65 @@ void build_story_favorite_playlist() {
 	printf("-----------------------------------------------------\n");
 }
 
-#define ALBUM_FAVORITE_CNT 3
+uint32_t find_album_hash_slot(const char* album_name) {
+	uint32_t album_no = 0;
+	uint32_t hash_key = 0;
+	playlist_prop_t prop;
+	uint8_t do_find_album = 0;
+
+	memset(&prop, 0, sizeof(prop));
+
+	get_playlist_prop(&prop);
+
+	album_no = prop.which_album_to_handle;
+
+	for (int i = 0; i < FAVORITE_ALBUM_CNT; i++) {
+		if (0 == strcmp(prop.album_name[i], album_name)) {
+			hash_key = i;
+			do_find_album = 1;
+			break;
+		}
+	}
+
+	if (0 == do_find_album) {
+		strncpy(prop.album_name[album_no], album_name, FAVORITE_ALBUM_NAME_LEN);
+		hash_key = prop.which_album_to_handle = (album_no + 1) % FAVORITE_ALBUM_CNT;
+		set_playlist_prop(&prop);
+	}
+
+	return hash_key;
+}
 
 void build_album_favorite_playlist() {
+	const char* album_name_0 = "channel000";
 	const char* album_list_0[] = {
 		"00A",
 		"00B",
 		"00C",
 	};
 
+	const char* album_name_1 = "channel001";
 	const char* album_list_1[] = {
 		"11A",
 		"11B",
 		"11C",
 	};
 
+	const char* album_name_2 = "channel002";
 	const char* album_list_2[] = {
 		"22A",
 		"22B",
 		"22C",
 	};
 
+	const char* album_name_3 = "channel003";
 	const char* album_list_3[] = {
 		"33A",
 		"33B",
 		"33C",
 	};
 
+	const char* album_name_4 = "channel004";
 	const char* album_list_4[] = {
 		"44A",
 		"44B",
@@ -101,6 +133,7 @@ void build_album_favorite_playlist() {
 		"44E",
 	};
 
+	const char* album_name_5 = "channel005";
 	const char* album_list_5[] = {
 		"55A",
 		"55B",
@@ -109,22 +142,19 @@ void build_album_favorite_playlist() {
 		"55E",
 	};
 
+	const char* album_name_6 = "channel006";
 	const char* album_list_6[] = {
-		"66A",
+		"066A",
 		"66B",
 		"66C",
 		"66D",
 		"66E",
 	};
 
-	uint32_t album_no = 0;
-	uint32_t hash_key = 0;
-	playlist_prop_t prop;
-
-	memset(&prop, 0, sizeof(prop));
+	int hash_key = 0;
 
 	// 1. 初始化哈希引擎，专辑收藏最多3个专辑，超过3个，新的会替换旧的
-	init_hash_engine(ALBUM_FAVORITE_CNT, sizeof(music_t), sizeof(playlist_prop_t));
+	init_hash_engine(FAVORITE_ALBUM_CNT, sizeof(music_t), sizeof(playlist_prop_t));
 
 	// 2. 检查播放列表是否存在
 	// check_playlist();	// 正式使用时使用改api
@@ -132,38 +162,24 @@ void build_album_favorite_playlist() {
 
 	/** START 添加三个专辑的歌曲 ***************/
 
-	get_playlist_prop(&prop);
-	hash_key = album_no = prop.which_album_to_handle;
-	prop.which_album_to_handle = (album_no + 1) % ALBUM_FAVORITE_CNT;
-	set_playlist_prop(&prop);
-
+	hash_key = find_album_hash_slot(album_name_0);
 	reset_playlist(hash_key);
 	for (int i = 0; i < sizeof(album_list_0) / sizeof(char*); i++) {
-		add_music(album_list_0[i][0], album_list_0[i]);
+		add_music(hash_key, album_list_0[i]);
 	}
 	clean_playlist(hash_key);
 
-
-	get_playlist_prop(&prop);
-	hash_key = album_no = prop.which_album_to_handle;
-	prop.which_album_to_handle = (album_no + 1) % ALBUM_FAVORITE_CNT;
-	set_playlist_prop(&prop);
-
+	hash_key = find_album_hash_slot(album_name_1);
 	reset_playlist(hash_key);
 	for (int i = 0; i < sizeof(album_list_1) / sizeof(char*); i++) {
-		add_music(album_list_1[i][0], album_list_1[i]);
+		add_music(hash_key, album_list_1[i]);
 	}
 	clean_playlist(hash_key);
 
-
-	get_playlist_prop(&prop);
-	hash_key = album_no = prop.which_album_to_handle;
-	prop.which_album_to_handle = (album_no + 1) % ALBUM_FAVORITE_CNT;
-	set_playlist_prop(&prop);
-
+	hash_key = find_album_hash_slot(album_name_2);
 	reset_playlist(hash_key);
 	for (int i = 0; i < sizeof(album_list_2) / sizeof(char*); i++) {
-		add_music(album_list_2[i][0], album_list_2[i]);
+		add_music(hash_key, album_list_2[i]);
 	}
 	clean_playlist(hash_key);
 	/** END 添加三个专辑的歌曲 ***************/
@@ -173,28 +189,19 @@ void build_album_favorite_playlist() {
 	printf("-----------------------------------------------------\n");
 
 	/** START 再添加两个专辑歌曲，此时最早的两个专辑会被覆盖掉 ***************/
-	get_playlist_prop(&prop);
-	hash_key = album_no = prop.which_album_to_handle;
-	prop.which_album_to_handle = (album_no + 1) % ALBUM_FAVORITE_CNT;
-	set_playlist_prop(&prop);
-
+	hash_key = find_album_hash_slot(album_name_3);
 	reset_playlist(hash_key);
 	for (int i = 0; i < sizeof(album_list_3) / sizeof(char*); i++) {
-		add_music(album_list_3[i][0], album_list_3[i]);
+		add_music(hash_key, album_list_3[i]);
 	}
 	clean_playlist(hash_key);
 
-	get_playlist_prop(&prop);
-	hash_key = album_no = prop.which_album_to_handle;
-	prop.which_album_to_handle = (album_no + 1) % ALBUM_FAVORITE_CNT;
-	set_playlist_prop(&prop);
-
+	hash_key = find_album_hash_slot(album_name_4);
 	reset_playlist(hash_key);
 	for (int i = 0; i < sizeof(album_list_4) / sizeof(char*); i++) {
-		add_music(album_list_4[i][0], album_list_4[i]);
+		add_music(hash_key, album_list_4[i]);
 	}
 	clean_playlist(hash_key);
-
 	/** END 再添加两个专辑歌曲，此时最早的两个专辑会被覆盖掉*****************/
 
 	printf("-- 专辑第一次更新 ---------------------------------------\n");
@@ -203,25 +210,17 @@ void build_album_favorite_playlist() {
 
 	/** START 再添加两个专辑歌曲，此时最早的两个专辑会被覆盖掉 ***************/
 
-	get_playlist_prop(&prop);
-	hash_key = album_no = prop.which_album_to_handle;
-	prop.which_album_to_handle = (album_no + 1) % ALBUM_FAVORITE_CNT;
-	set_playlist_prop(&prop);
-
+	hash_key = find_album_hash_slot(album_name_5);
 	reset_playlist(hash_key);
 	for (int i = 0; i < sizeof(album_list_5) / sizeof(char*); i++) {
-		add_music(album_list_5[i][0], album_list_5[i]);
+		add_music(hash_key, album_list_5[i]);
 	}
 	clean_playlist(hash_key);
 
-	get_playlist_prop(&prop);
-	hash_key = album_no = prop.which_album_to_handle;
-	prop.which_album_to_handle = (album_no + 1) % ALBUM_FAVORITE_CNT;
-	set_playlist_prop(&prop);
-
+	hash_key = find_album_hash_slot(album_name_6);
 	reset_playlist(hash_key);
 	for (int i = 0; i < sizeof(album_list_6) / sizeof(char*); i++) {
-		add_music(album_list_6[i][0], album_list_6[i]);
+		add_music(hash_key, album_list_6[i]);
 	}
 	clean_playlist(hash_key);
 

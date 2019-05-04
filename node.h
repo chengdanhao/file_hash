@@ -7,6 +7,8 @@
 #define PLAYLIST_PATH "playlist"
 
 #define MUSIC_PATH_LEN 200
+#define FAVORITE_ALBUM_NAME_LEN 20
+#define FAVORITE_ALBUM_CNT 3
 
 /*
  * 后续只需要修改这个头文件就可以自定义节点数据，底层代码不用修改
@@ -21,6 +23,7 @@ typedef enum {
 typedef struct {
 	int reserved;
 	uint32_t which_album_to_handle;
+	char album_name[FAVORITE_ALBUM_CNT][FAVORITE_ALBUM_NAME_LEN];
 } playlist_prop_t;
 
 typedef struct {

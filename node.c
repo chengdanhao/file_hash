@@ -129,6 +129,7 @@ int get_playlist_cb(hash_property_t* file, hash_property_t* output) {
 
 	output_playlist->reserved = file_playlist->reserved;
 	output_playlist->which_album_to_handle = file_playlist->which_album_to_handle;
+	memcpy(output_playlist->album_name, file_playlist->album_name, sizeof(output_playlist->album_name));
 }
 
 int set_playlist_cb(hash_property_t* file, hash_property_t* input) {
@@ -137,6 +138,7 @@ int set_playlist_cb(hash_property_t* file, hash_property_t* input) {
 
 	file_playlist->reserved = input_playlist->reserved;
 	file_playlist->which_album_to_handle = input_playlist->which_album_to_handle;
+	memcpy(file_playlist->album_name, input_playlist->album_name, sizeof(input_playlist->album_name));
 }
 
 off_t is_music_exist(int hash_key, const char* music_path) {
@@ -229,13 +231,17 @@ void get_playlist_prop(playlist_prop_t* playlist_prop) {
 
 	get_hash_prop(PLAYLIST_PATH, &hash_prop, get_playlist_cb);
 
-	node_info("<GET> 0x%x %d.", playlist_prop->reserved, playlist_prop->which_album_to_handle);
+	node_info("<GET> reserved = 0x%x which_album = %d, [0](%s), [1](%s), [2](%s).",
+		playlist_prop->reserved, playlist_prop->which_album_to_handle,
+		playlist_prop->album_name[0], playlist_prop->album_name[1], playlist_prop->album_name[2]);
 }
 
 void set_playlist_prop(playlist_prop_t* playlist_prop) {
 	hash_property_t hash_prop;
 
-	node_info("<SET> 0x%x %d.", playlist_prop->reserved, playlist_prop->which_album_to_handle);
+	node_info("<SET> reserved = 0x%x which_album = %d, [0](%s), [1](%s), [2](%s).",
+		playlist_prop->reserved, playlist_prop->which_album_to_handle,
+		playlist_prop->album_name[0], playlist_prop->album_name[1], playlist_prop->album_name[2]);
 
 	memset(&hash_prop, 0, sizeof(hash_property_t));
 
