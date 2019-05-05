@@ -31,8 +31,8 @@ typedef struct {
 	char path[MUSIC_PATH_LEN];
 } music_t;
 
-int add_music(int hash_key, const char* music_path);
-int del_music(int hash_key, const char* music_path);
+int add_music(uint32_t hash_key, const char* music_path);
+int del_music(uint32_t hash_key, const char* music_path);
 void show_playlist();
 
 /*
@@ -41,8 +41,8 @@ void show_playlist();
  * reset操作将所有节点歌曲都标记为待删除（MUSIC_DELETE）。后续添加时，存在的歌曲会更新为保留（MUSIC_KEEP）。
  * 添加完所有歌曲后，让然处于待删除（MUSIC_DELETE）的歌曲，则调用clean来删除
  */
-void clean_playlist(int hash_key);
-void reset_playlist(int hash_key);
+void clean_playlist(uint32_t hash_key);
+void reset_playlist(uint32_t hash_key);
 /********************/
 
 // 获取播放列表属性，该属性存放在hash_property_t中

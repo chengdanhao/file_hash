@@ -151,7 +151,7 @@ void build_album_favorite_playlist() {
 		"66E",
 	};
 
-	int hash_key = 0;
+	uint32_t hash_key = 0;
 
 	// 1. 初始化哈希引擎，专辑收藏最多3个专辑，超过3个，新的会替换旧的
 	init_hash_engine(FAVORITE_ALBUM_CNT, sizeof(music_t), sizeof(playlist_prop_t));

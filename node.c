@@ -141,7 +141,7 @@ int set_playlist_cb(hash_property_t* file, hash_property_t* input) {
 	memcpy(file_playlist->album_name, input_playlist->album_name, sizeof(input_playlist->album_name));
 }
 
-off_t is_music_exist(int hash_key, const char* music_path) {
+off_t is_music_exist(uint32_t hash_key, const char* music_path) {
 	node_data_t data;
 	music_t music;
 
@@ -156,7 +156,7 @@ off_t is_music_exist(int hash_key, const char* music_path) {
 	return traverse_nodes(PLAYLIST_PATH, TRAVERSE_SPECIFIC_HASH_KEY, hash_key, WITHOUT_PRINT, &data, find_node_cb);
 }
 
-int add_music(int hash_key, const char* music_path) {
+int add_music(uint32_t hash_key, const char* music_path) {
 	int ret = -1;
 	node_data_t data;
 	music_t music;
@@ -187,7 +187,7 @@ exit:
 	return ret;
 }
 
-int del_music(int hash_key, const char* music_path) {
+int del_music(uint32_t hash_key, const char* music_path) {
 	int ret = -1;
 	node_data_t data;
 	music_t music;
@@ -214,11 +214,11 @@ void show_playlist() {
 	traverse_nodes(PLAYLIST_PATH, TRAVERSE_ALL, 0, WITH_PRINT, NULL, print_node_cb);
 }
 
-void reset_playlist(int hash_key) {
+void reset_playlist(uint32_t hash_key) {
 	traverse_nodes(PLAYLIST_PATH, TRAVERSE_SPECIFIC_HASH_KEY, hash_key, WITHOUT_PRINT, NULL, reset_node_cb);
 }
 
-void clean_playlist(int hash_key) {
+void clean_playlist(uint32_t hash_key) {
 	traverse_nodes(PLAYLIST_PATH, TRAVERSE_SPECIFIC_HASH_KEY, hash_key, WITHOUT_PRINT, NULL, clean_node_cb);
 }
 

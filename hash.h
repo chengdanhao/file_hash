@@ -33,7 +33,8 @@ typedef struct {
 // 文件节点，以链式方式存储在文件中
 typedef struct {
 	uint8_t used;
-	uint32_t next_offset;
+	off_t prev_offset;
+	off_t next_offset;
 	node_data_t data;
 } file_node_t;
 
@@ -59,7 +60,7 @@ int add_node(char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t
 int del_node(char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t*));
 
 // 遍历节点
-off_t traverse_nodes(char* path, traverse_type_t traverse_type, int hash_key, print_t print, node_data_t* input, traverse_action_t (*cb)(file_node_t*, node_data_t*));
+uint8_t traverse_nodes(char* path, traverse_type_t traverse_type, uint32_t hash_key, print_t print, node_data_t* input, traverse_action_t (*cb)(file_node_t*, node_data_t*));
 
 // 初始化哈希引擎，告知所需信息
 void init_hash_engine(int hash_slot_cnt, int hash_value_size, int hash_property_size);
