@@ -33,6 +33,19 @@
 #define node_error(fmt, ...)
 #endif
 
+int get_music_cb(file_node_t* node, file_node_t* output) {
+	music_t* file_music = (music_t *)(node->data.hash_value);
+
+	output->prev_offset = node->prev_offset;
+	output->next_offset = node->next_offset;
+	memcpy(output->data.hash_value, node->data.hash_value, sizeof(music_t));
+
+#if 0
+	node_debug("上一首: 0x%lX, 当前音乐 '%s', 下一首：0x%lX.",
+		output->prev_offset, ((music_t*)output->data.hash_value)->path, output->next_offset);
+#endif
+}
+
 int add_node_cb(node_data_t* file, node_data_t* input) {
 	file->hash_key = input->hash_key;
 	memcpy(file->hash_value, input->hash_value, sizeof(music_t));
@@ -41,11 +54,8 @@ int add_node_cb(node_data_t* file, node_data_t* input) {
 
 int del_node_cb(node_data_t* file, node_data_t* input) {
 	int ret = -1;
-	music_t* file_music = NULL;
-	music_t* input_music = NULL;
-
-	file_music = (music_t*)(file->hash_value);
-	input_music = (music_t*)(input->hash_value);
+	music_t* file_music = (music_t*)(file->hash_value);
+	music_t* input_music = (music_t*)(input->hash_value);
 
 	if (0 == strncmp(file_music->path, input_music->path, MUSIC_PATH_LEN)) {
 		file->hash_key = 0;
@@ -58,18 +68,16 @@ int del_node_cb(node_data_t* file, node_data_t* input) {
 }
 
 traverse_action_t print_node_cb(file_node_t* node, node_data_t* input) {
-	music_t* music = NULL;
-
-	music = (music_t*)(node->data.hash_value);
+	music_t* music = (music_t*)(node->data.hash_value);
 
 	if (node->used) {
 		if (MUSIC_DELETE == music->delete_or_not) {
 			printf("{ DEL : %s }", music->path);
 		} else {
-			printf("{ %s }", music->path);
+			printf("%s", music->path);
 		}
 	} else {
-		printf("{ ----- }");
+		printf("*");
 	}
 
 exit:
@@ -77,9 +85,7 @@ exit:
 }
 
 traverse_action_t reset_node_cb(file_node_t* node, node_data_t* input) {
-	music_t* file_music = NULL;
-
-	file_music = (music_t*)(node->data.hash_value);
+	music_t* file_music = (music_t*)(node->data.hash_value);
 
 	if (node->used) {
 		file_music->delete_or_not = MUSIC_DELETE;
@@ -90,9 +96,7 @@ exit:
 }
 
 traverse_action_t clean_node_cb(file_node_t* node, node_data_t* input) {
-	music_t* file_music = NULL;
-
-	file_music = (music_t*)(node->data.hash_value);
+	music_t* file_music = (music_t*)(node->data.hash_value);
 
 	if (node->used && MUSIC_DELETE == file_music->delete_or_not) {
 		node_warn("delete %s.", file_music->path);
@@ -108,11 +112,8 @@ exit:
 // 如果找到，返回1
 traverse_action_t find_node_cb(file_node_t* node, node_data_t* input) {
 	int action = TRAVERSE_ACTION_DO_NOTHING;
-	music_t* file_music = NULL;
-	music_t* input_music = NULL;
-
-	file_music = (music_t*)(node->data.hash_value);
-	input_music = (music_t*)(input->hash_value);
+	music_t* file_music = (music_t*)(node->data.hash_value);
+	music_t* input_music = (music_t*)(input->hash_value);
 
 	if (node->used && 0 == strcmp(file_music->path, input_music->path)) {
 		file_music->delete_or_not = MUSIC_KEEP;
@@ -139,6 +140,35 @@ int set_playlist_cb(hash_property_t* file, hash_property_t* input) {
 	file_playlist->reserved = input_playlist->reserved;
 	file_playlist->which_album_to_handle = input_playlist->which_album_to_handle;
 	memcpy(file_playlist->album_name, input_playlist->album_name, sizeof(input_playlist->album_name));
+}
+
+void get_music(uint32_t hash_key, direction_t next_or_prev) {
+	off_t offset = 0;
+	static music_t s_music;
+	static file_node_t s_node = { .data = { .hash_value = &s_music } };
+	get_node_method_t method = GET_NODE_BY_HASH_KEY;
+
+next_node:
+	offset = NEXT_MUSIC == next_or_prev ? s_node.next_offset : s_node.prev_offset;
+	method = offset > 0 ? GET_NODE_BY_OFFSET : GET_NODE_BY_HASH_KEY;
+
+	get_node(PLAYLIST_PATH, method, hash_key, offset, &s_node, get_music_cb);
+
+	if (0 == strcmp(s_music.path, "")) {
+		goto next_node;
+	}
+
+	node_info("音乐名称 = %s.", s_music.path);
+}
+
+void get_prev_music(uint32_t hash_key) {
+	get_music(hash_key, PREV_MUSIC);
+	//return s_prev_music_offset;
+}
+
+void get_next_music(uint32_t hash_key) {
+	get_music(hash_key, NEXT_MUSIC);
+	//return s_next_music_offset;
 }
 
 off_t is_music_exist(uint32_t hash_key, const char* music_path) {

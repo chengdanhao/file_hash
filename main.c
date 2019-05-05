@@ -234,5 +234,15 @@ void build_album_favorite_playlist() {
 
 int main() {
 	build_story_favorite_playlist();
+	for (int i = 0; i < 15; i++) {
+		get_next_music(0);
+	}
+	
 	build_album_favorite_playlist();
+	for (int i = 0; i < 5; i++) {
+		for (int j = 0; j < 5; j++) {
+			get_prev_music(i);
+		}
+		printf("------------\n");
+	}
 }

@@ -24,6 +24,12 @@ typedef enum {
 	TRAVERSE_SPECIFIC_HASH_KEY,
 } traverse_type_t;
 
+// 获取节点的方式，通过哈希值取得“首节点”还是通过偏移量直接定位
+typedef enum {
+	GET_NODE_BY_HASH_KEY,
+	GET_NODE_BY_OFFSET,
+} get_node_method_t;
+
 // 节点的数据部分，分key和value，其中value由用户再上层填充
 typedef struct {
 	uint32_t hash_key;	// 该字段不能删！！！
@@ -52,6 +58,9 @@ int get_hash_prop(char* path, hash_property_t* output, int (*cb)(hash_property_t
 
 // 设置哈希属性
 int set_hash_prop(char* path, hash_property_t* output, int (*cb)(hash_property_t*, hash_property_t*));
+
+// 获取节点信息
+off_t get_node(char* path, get_node_method_t method, uint32_t hash_key, off_t offset, file_node_t* output, int (*cb)(file_node_t*, file_node_t*));
 
 // 添加节点
 int add_node(char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t*));

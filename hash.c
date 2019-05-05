@@ -86,7 +86,7 @@ exit:
 int get_hash_prop(char* path, hash_property_t* output, int (*cb)(hash_property_t*, hash_property_t*)) {
 	int fd = 0;
 	int ret = -1;
-	int curr_offset = 0;
+	off_t curr_offset = 0;
 	hash_property_t prop;
 	void* prop_content = NULL;
 
@@ -101,7 +101,7 @@ int get_hash_prop(char* path, hash_property_t* output, int (*cb)(hash_property_t
 	}
 
 	if ((curr_offset = lseek(fd, 0, SEEK_CUR)) < 0) {
-		hash_error("seek to %d fail.", curr_offset);
+		hash_error("seek to %ld fail.", curr_offset);
 		goto close_file;
 	}
 
@@ -125,7 +125,7 @@ int get_hash_prop(char* path, hash_property_t* output, int (*cb)(hash_property_t
 	cb(&prop, output);
 
 	if (lseek(fd, curr_offset, SEEK_SET) < 0) {
-		hash_error("seek back to %d fail.", curr_offset);
+		hash_error("seek back to %ld fail.", curr_offset);
 		goto close_file;
 	}
 
@@ -141,7 +141,7 @@ exit:
 int set_hash_prop(char* path, hash_property_t* input, int (*cb)(hash_property_t*, hash_property_t*)) {
 	int fd = 0;
 	int ret = -1;
-	int curr_offset = 0;
+	off_t curr_offset = 0;
 	hash_property_t prop;
 	void *prop_content = NULL;
 
@@ -158,7 +158,7 @@ int set_hash_prop(char* path, hash_property_t* input, int (*cb)(hash_property_t*
 	}
 
 	if ((curr_offset = lseek(fd, 0, SEEK_CUR)) < 0) {
-		hash_error("seek to %d fail.", curr_offset);
+		hash_error("seek to %ld fail.", curr_offset);
 		goto close_file;
 	}
 
@@ -182,7 +182,7 @@ int set_hash_prop(char* path, hash_property_t* input, int (*cb)(hash_property_t*
 	}
 
 	if (lseek(fd, curr_offset, SEEK_SET) < 0) {
-		hash_error("seek back to %d fail.", curr_offset);
+		hash_error("seek back to %ld fail.", curr_offset);
 		goto close_file;
 	}
 
@@ -277,6 +277,77 @@ exit:
 	return ret;
 }
 
+// 获取指定哈希值或指定偏移量的节点，返回下一个节点偏移量
+off_t get_node(char* path, get_node_method_t method, uint32_t hash_key, off_t offset, file_node_t* output, int (*cb)(file_node_t*, file_node_t*)) {
+	int ret = -1;
+	int fd = 0;
+	uint32_t group = 0;
+	off_t curr_offset = 0;
+	file_node_t node;
+	void* hash_value = NULL;
+
+	memset(&node, 0, sizeof(file_node_t));
+
+	if (method == GET_NODE_BY_HASH_KEY) {
+		group = hash_key % s_hash_slot_cnt;
+		offset = (sizeof(hash_property_t) + s_hash_property_size)\
+			+ group * (sizeof(file_node_t) + s_hash_value_size);
+	}
+
+	if (NULL == (hash_value = (void*)calloc(1, s_hash_value_size))) {
+		hash_error("malloc failed.");
+		goto exit;
+	}
+
+	if ((fd = open(path, O_RDONLY)) < 0) {
+		hash_error("Open file %s fail.", path);
+		goto exit;
+	}
+
+	// 记录当前偏移量，后面会回退到该偏移量
+	if ((curr_offset = lseek(fd, 0, SEEK_CUR)) < 0) {
+		hash_error("seek to %ld fail.", curr_offset);
+		goto close_file;
+	}
+
+	// 定位到指定的偏移量处
+	if (lseek(fd, offset, SEEK_SET) < 0) {
+		hash_error("seek to %ld fail.", offset);
+		goto close_file;
+	}
+
+	if (read(fd, &node, sizeof(file_node_t)) < 0) {
+		hash_error("read node failed.");
+		goto close_file;
+	}
+
+	if (read(fd, hash_value, s_hash_value_size) < 0) {
+		hash_error("read hash_value failed.");
+		goto close_file;
+	}
+
+	// 建立关联，方便后面使用。之后不要破坏这种关联（比如read调用）
+	node.data.hash_value = hash_value;
+
+	// 在回调函数中可以返回上/下一首歌曲的偏移量
+	cb(&node, output);
+
+	// 重新指向开始时的偏移量
+	if (lseek(fd, curr_offset, SEEK_SET) < 0) {
+		hash_error("seek back to %ld fail.", curr_offset);
+		goto close_file;
+	}
+
+	ret = 0;
+
+close_file:
+	close(fd);
+
+exit:
+	safe_free(hash_value);
+	return ret;
+}
+
 int add_node(char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t*)) {
 	int ret = -1;
 	int fd = 0;
@@ -321,7 +392,8 @@ int add_node(char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t
 			goto close_file;
 		}
 
-		node.data.hash_value = hash_value;	// 建立关联，方便后面使用
+		// 建立关联，方便后面使用。之后不要破坏这种关联（比如read调用）
+		node.data.hash_value = hash_value;
 
 		if (lseek(fd, offset, SEEK_SET) < 0) {
 			hash_error("seek back to %ld fail.", offset);
@@ -340,50 +412,79 @@ int add_node(char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t
 			// 0 0, 首次使用第一个节点
 			if (0 == node.used && first_node_offset == node.next_offset) {
 #if MORE_ADD_NODE_INFO
-				hash_debug("(FIRST) <0x%lx> { %d }", offset, input->hash_key);
+				hash_debug("(FIRST) <0x%lx> (0x%lx : %d ) <0x%lx>",
+					node.prev_offset, offset, input->hash_key, node.next_offset);
 #endif
-				node.next_offset = first_node_offset;
+				node.prev_offset = node.next_offset = first_node_offset;
 			}
 
 			// 0 1, 被清空过的节点
-			else if (0 == node.used && node.next_offset > 0) {
+			else if (0 == node.used && first_node_offset != node.next_offset) {
 #if MORE_ADD_NODE_INFO
-				hash_debug(" (USED) <0x%lx> { %d } -> <0x%lx>",
-					offset, input->hash_key, node.next_offset);
+				hash_debug(" (USED) <0x%lx> (0x%lx : %d ) <0x%lx>",
+					node.prev_offset, offset, input->hash_key, node.next_offset);
 #endif
 			}
 
-			// 1 0, 已被使用的最后一个节点
+			// 1 0, 正在使用的最后一个节点
 			else if (1 == node.used && first_node_offset == node.next_offset) {
-				// 新节点在文件末尾插入
+				off_t curr_node_offset = offset;
+
+				// 新节点在文件末尾插入，获取新节点偏移量
 				if ((new_node_offset = lseek(fd, 0, SEEK_END)) < 0) {
 					hash_error("prepare new node, seek to %ld fail.", offset);
 					goto close_file;
 				}
 
-				// 修改当前解点的next_offset值，指向新节点
-				lseek(fd, offset, SEEK_SET);
+				/**** 1. START 修改当前节点的next_offset值，指向新节点 ****/
+				lseek(fd, curr_node_offset, SEEK_SET);
 
-				node.prev_offset = prev_offset;
 				node.next_offset = new_node_offset;
 
 				if (write(fd, &node, sizeof(file_node_t)) < 0) {
 					hash_error("write node error.");
 					goto close_file;
 				}
+				/**** 1. END 修改当前节点的next_offset值，指向新节点 ****/
 
-				// 移到新节点处
+				/**** 2. START 修改头节点的prev_offset值，指向新节点 ****/
+				lseek(fd, first_node_offset, SEEK_SET);
+
+				file_node_t first_node;
+
+				memset(&first_node, 0, sizeof(first_node));
+
+				if (read(fd, &first_node, sizeof(file_node_t)) < 0) {
+					hash_error("read node error.");
+					goto close_file;
+				}
+
+				first_node.prev_offset = new_node_offset;
+
+				// 再次回到节点开头写回
+				lseek(fd, first_node_offset, SEEK_SET);
+
+				if (write(fd, &first_node, sizeof(file_node_t)) < 0) {
+					hash_error("write node error.");
+					goto close_file;
+				}
+				/**** 2. END 修改头节点的prev_offset值，指向新节点 ****/
+
+				/**** 3. START 修改新节点的prev和next指针 ****/
 				lseek(fd, 0, SEEK_END);
 
+				node.prev_offset = curr_node_offset;
 				node.next_offset = first_node_offset;
+				/**** 3. END 修改新节点的prev和next指针 ****/
 
 #if MORE_ADD_NODE_INFO
-				hash_debug(" (TAIL) <0x%lx> { %d } -> <0x%lx> { %d }",
-					offset, node.data.hash_key, new_node_offset, input->hash_key);
+				hash_debug(" (TAIL) <0x%lx> (0x%lx : %d ) <0x%lx>",
+					node.prev_offset, new_node_offset, input->hash_key, node.next_offset);
 #endif
 			}
 #undef MORE_ADD_NODE_INFO
 
+			/**** 4. START 写入新节点的其他信息 ****/
 			node.used = 1;
 
 			cb(&(node.data), input);
@@ -397,6 +498,7 @@ int add_node(char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t
 				hash_error("write hash_value error.");
 				goto close_file;
 			}
+			/**** 4. END 写入新节点的其他信息 ****/
 
 			break;
 		} else {
@@ -461,7 +563,8 @@ int del_node(char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t
 			goto close_file;
 		}
 
-		node.data.hash_value = hash_value;	// 建立关联，方便后面使用
+		// 建立关联，方便后面使用。之后不要破坏这种关联（比如read调用）
+		node.data.hash_value = hash_value;
 
 		// 比较的同时，清空node.data中的相关数据
 		if (0 == cb(&(node.data), input)) {
@@ -563,12 +666,14 @@ uint8_t traverse_nodes(char* path, traverse_type_t traverse_type, uint32_t hash_
 			if (s_first_node) {
 				s_first_node = 0;
 			} else {
-				if (WITH_PRINT == print) { printf(" -> "); }
+				if (WITH_PRINT == print) { printf(" --- "); }
 			}
 
-			if (WITH_PRINT == print) { printf("<0x%.2lX> ", offset); }
+			if (WITH_PRINT == print) { printf("<0x%lX> ( 0x%lX : ", node.prev_offset, offset); }
 
 			action = cb(&node, input);
+
+			if (WITH_PRINT == print) { printf(" ) <0x%lX>", node.next_offset); }
 
 			if (TRAVERSE_ACTION_UPDATE & action) {
 				// 跳回到节点头部

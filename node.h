@@ -31,6 +31,14 @@ typedef struct {
 	char path[MUSIC_PATH_LEN];
 } music_t;
 
+typedef enum {
+	NEXT_MUSIC,
+	PREV_MUSIC,
+} direction_t;
+
+void get_prev_music(uint32_t hash_key);
+void get_next_music(uint32_t hash_key);
+
 int add_music(uint32_t hash_key, const char* music_path);
 int del_music(uint32_t hash_key, const char* music_path);
 void show_playlist();
