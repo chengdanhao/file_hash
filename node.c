@@ -33,17 +33,30 @@
 #define node_error(fmt, ...)
 #endif
 
+int get_playlist_cb(hash_property_t* file, hash_property_t* output) {
+	playlist_prop_t* file_playlist = (playlist_prop_t*)(file->prop);
+	playlist_prop_t* output_playlist = (playlist_prop_t*)(output->prop);
+
+	output_playlist->which_album_to_handle = file_playlist->which_album_to_handle;
+	output_playlist->total_record_cnt = file_playlist->total_record_cnt;
+	memcpy(output_playlist->record, file_playlist->record, sizeof(output_playlist->record));
+}
+
+int set_playlist_cb(hash_property_t* file, hash_property_t* input) {
+	playlist_prop_t* file_playlist = (playlist_prop_t*)(file->prop);
+	playlist_prop_t* input_playlist = (playlist_prop_t*)(input->prop);
+
+	file_playlist->which_album_to_handle = input_playlist->which_album_to_handle;
+	file_playlist->total_record_cnt = input_playlist->total_record_cnt;
+	memcpy(file_playlist->record, input_playlist->record, sizeof(input_playlist->record));
+}
+
 int get_music_cb(file_node_t* node, file_node_t* output) {
 	music_t* file_music = (music_t *)(node->data.hash_value);
 
 	output->prev_offset = node->prev_offset;
 	output->next_offset = node->next_offset;
 	memcpy(output->data.hash_value, node->data.hash_value, sizeof(music_t));
-
-#if 0
-	node_debug("上一首: 0x%lX, 当前音乐 '%s', 下一首：0x%lX.",
-		output->prev_offset, ((music_t*)output->data.hash_value)->path, output->next_offset);
-#endif
 }
 
 int add_node_cb(node_data_t* file, node_data_t* input) {
@@ -124,41 +137,103 @@ exit:
 	return action;
 }
 
-int get_playlist_cb(hash_property_t* file, hash_property_t* output) {
-	playlist_prop_t* file_playlist = (playlist_prop_t*)(file->prop);
-	playlist_prop_t* output_playlist = (playlist_prop_t*)(output->prop);
+void _get_playlist_prop(const char* func, const int line, playlist_prop_t* playlist_prop) {
+	hash_property_t hash_prop;
 
-	output_playlist->reserved = file_playlist->reserved;
-	output_playlist->which_album_to_handle = file_playlist->which_album_to_handle;
-	memcpy(output_playlist->album_name, file_playlist->album_name, sizeof(output_playlist->album_name));
+	memset(&hash_prop, 0, sizeof(hash_property_t));
+
+	hash_prop.prop = playlist_prop;
+
+	get_hash_prop(PLAYLIST_PATH, &hash_prop, get_playlist_cb);
+
+#if 0
+	printf("-------------------------- \e[7;32m<GET> %s : %d\e[0m --------------------------\n"
+		"which_album = %d, record_cnt = %d.\n",
+		func, line,
+		playlist_prop->which_album_to_handle, playlist_prop->total_record_cnt);
+
+	for (int i = 0; i < playlist_prop->total_record_cnt; i++) {
+		printf("[%d] total_music = %d, prev = 0x%lX, next = 0x%lX, album_name = %s.\n", i,
+			playlist_prop->record[i].total_music_cnt,
+			playlist_prop->record[i].prev_offset,
+			playlist_prop->record[i].next_offset,
+			playlist_prop->record[i].album_name);
+	}
+
+	printf("---------------------------------------"
+		"---------------------------------------\n");
+#endif
 }
 
-int set_playlist_cb(hash_property_t* file, hash_property_t* input) {
-	playlist_prop_t* file_playlist = (playlist_prop_t*)(file->prop);
-	playlist_prop_t* input_playlist = (playlist_prop_t*)(input->prop);
+void _set_playlist_prop(const char* func, const int line, playlist_prop_t* playlist_prop) {
+	hash_property_t hash_prop;
 
-	file_playlist->reserved = input_playlist->reserved;
-	file_playlist->which_album_to_handle = input_playlist->which_album_to_handle;
-	memcpy(file_playlist->album_name, input_playlist->album_name, sizeof(input_playlist->album_name));
+#if 0
+	printf("-------------------------- \e[7;33m<SET> %s : %d\e[0m --------------------------\n"
+		"which_album = %d, record_cnt = %d\n",
+		func, line,
+		playlist_prop->which_album_to_handle, playlist_prop->total_record_cnt);
+
+	for (int i = 0; i < playlist_prop->total_record_cnt; i++) {
+		printf("[%d] total_music = %d, prev = 0x%lX, next = 0x%lX, album_name = %s.\n", i,
+			playlist_prop->record[i].total_music_cnt,
+			playlist_prop->record[i].prev_offset,
+			playlist_prop->record[i].next_offset,
+			playlist_prop->record[i].album_name);
+	}
+
+	printf("---------------------------------------"
+		"---------------------------------------\n");
+#endif
+
+	memset(&hash_prop, 0, sizeof(hash_property_t));
+
+	hash_prop.prop = playlist_prop;
+
+	set_hash_prop(PLAYLIST_PATH, &hash_prop, set_playlist_cb);
 }
 
 void get_music(uint32_t hash_key, direction_t next_or_prev) {
 	off_t offset = 0;
-	static music_t s_music;
-	static file_node_t s_node = { .data = { .hash_value = &s_music } };
+	playlist_prop_t prop;
+	uint32_t record_cnt = 0;
+	uint32_t record_no = 0;
+	uint32_t total_music_cnt = 0;
 	get_node_method_t method = GET_NODE_BY_HASH_KEY;
+	music_t s_music;
+	file_node_t s_node = { .data = { .hash_value = &s_music } };
+
+	memset(&prop, 0, sizeof(prop));
+
+	get_playlist_prop(&prop);
+	record_cnt = prop.total_record_cnt;
+	record_no = hash_key % record_cnt;
+	total_music_cnt = prop.record[record_no].total_music_cnt;
+
+	if (0 == total_music_cnt) {
+		node_info("播放列表 '%s' 没有歌曲.", prop.record[record_no].album_name);
+		goto exit;
+	}
 
 next_node:
-	offset = NEXT_MUSIC == next_or_prev ? s_node.next_offset : s_node.prev_offset;
+	offset = NEXT_MUSIC == next_or_prev ? prop.record[record_no].next_offset : prop.record[record_no].prev_offset;
 	method = offset > 0 ? GET_NODE_BY_OFFSET : GET_NODE_BY_HASH_KEY;
 
 	get_node(PLAYLIST_PATH, method, hash_key, offset, &s_node, get_music_cb);
+
+	prop.record[record_no].next_offset = s_node.next_offset;
+	prop.record[record_no].prev_offset = s_node.prev_offset;
 
 	if (0 == strcmp(s_music.path, "")) {
 		goto next_node;
 	}
 
 	node_info("音乐名称 = %s.", s_music.path);
+
+	set_playlist_prop(&prop);
+
+exit:
+	return;
 }
 
 void get_prev_music(uint32_t hash_key) {
@@ -191,11 +266,15 @@ int add_music(uint32_t hash_key, const char* music_path) {
 	node_data_t data;
 	music_t music;
 	off_t offset = 0;
+	playlist_prop_t prop;
+	uint32_t record_no = 0;
+
+	memset(&prop, 0, sizeof(prop));
 
 	if ((offset = is_music_exist(hash_key, music_path)) > 0) {
 		node_debug("already exist '%s'", music_path);
 		ret = 0;
-		goto exit;
+		goto music_exist;
 	}
 
 	memset(&data, 0, sizeof(data));
@@ -207,11 +286,18 @@ int add_music(uint32_t hash_key, const char* music_path) {
 	data.hash_key = hash_key;
 	data.hash_value = &music;
 
-	if (0 == (ret = add_node(PLAYLIST_PATH, &data, add_node_cb))) {
-		node_info("add success : %s.", music_path);
-	} else {
+	if (0 != (ret = add_node(PLAYLIST_PATH, &data, add_node_cb))) {
 		node_error("add failed : %s.", music_path);
+		goto exit;
 	}
+
+	node_info("add success : %s.", music_path);
+
+music_exist:
+	get_playlist_prop(&prop);
+	record_no = hash_key % prop.total_record_cnt;
+	++prop.record[record_no].total_music_cnt;
+	set_playlist_prop(&prop);
 
 exit:
 	return ret;
@@ -221,6 +307,8 @@ int del_music(uint32_t hash_key, const char* music_path) {
 	int ret = -1;
 	node_data_t data;
 	music_t music;
+	playlist_prop_t prop;
+	uint32_t record_no = 0;
 
 	memset(&data, 0, sizeof(data));
 	memset(&music, 0, sizeof(music));
@@ -231,12 +319,19 @@ int del_music(uint32_t hash_key, const char* music_path) {
 	data.hash_key = hash_key;
 	data.hash_value = &music;
 
-	if (0 == (ret = del_node(PLAYLIST_PATH, &data, del_node_cb))) {
-		node_info("del success : %s.", music_path);
-	} else {
+	if (0 != (ret = del_node(PLAYLIST_PATH, &data, del_node_cb))) {
 		node_error("del failed : %s.", music_path);
+		goto exit;
 	}
 
+	node_warn("del success : %s.", music_path);
+
+	get_playlist_prop(&prop);
+	record_no = hash_key % prop.total_record_cnt;
+	--prop.record[record_no].total_music_cnt;
+	set_playlist_prop(&prop);
+
+exit:
 	return ret;
 }
 
@@ -245,39 +340,19 @@ void show_playlist() {
 }
 
 void reset_playlist(uint32_t hash_key) {
+	playlist_prop_t prop;
+	uint32_t record_no = 0;
+
+	get_playlist_prop(&prop);
+	record_no = hash_key % prop.total_record_cnt;
+	prop.record[record_no].total_music_cnt = 0;
+	set_playlist_prop(&prop);
+
 	traverse_nodes(PLAYLIST_PATH, TRAVERSE_SPECIFIC_HASH_KEY, hash_key, WITHOUT_PRINT, NULL, reset_node_cb);
 }
 
 void clean_playlist(uint32_t hash_key) {
 	traverse_nodes(PLAYLIST_PATH, TRAVERSE_SPECIFIC_HASH_KEY, hash_key, WITHOUT_PRINT, NULL, clean_node_cb);
-}
-
-void get_playlist_prop(playlist_prop_t* playlist_prop) {
-	hash_property_t hash_prop;
-
-	memset(&hash_prop, 0, sizeof(hash_property_t));
-
-	hash_prop.prop = playlist_prop;
-
-	get_hash_prop(PLAYLIST_PATH, &hash_prop, get_playlist_cb);
-
-	node_info("<GET> reserved = 0x%x which_album = %d, [0](%s), [1](%s), [2](%s).",
-		playlist_prop->reserved, playlist_prop->which_album_to_handle,
-		playlist_prop->album_name[0], playlist_prop->album_name[1], playlist_prop->album_name[2]);
-}
-
-void set_playlist_prop(playlist_prop_t* playlist_prop) {
-	hash_property_t hash_prop;
-
-	node_info("<SET> reserved = 0x%x which_album = %d, [0](%s), [1](%s), [2](%s).",
-		playlist_prop->reserved, playlist_prop->which_album_to_handle,
-		playlist_prop->album_name[0], playlist_prop->album_name[1], playlist_prop->album_name[2]);
-
-	memset(&hash_prop, 0, sizeof(hash_property_t));
-
-	hash_prop.prop = playlist_prop;
-
-	set_hash_prop(PLAYLIST_PATH, &hash_prop, set_playlist_cb);
 }
 
 void check_playlist() {

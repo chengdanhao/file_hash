@@ -2,6 +2,7 @@
 #include <string.h>
 #include "node.h"
 
+#define STORY_SLOT_CNT 1
 void build_story_favorite_playlist() {
 	const char* playlist_1[] = {
 		"AAA",
@@ -31,12 +32,21 @@ void build_story_favorite_playlist() {
 		"ZZZ new",
 	};
 
+	playlist_prop_t playlist_prop;
+
+	memset(&playlist_prop, 0, sizeof(playlist_prop));
+
 	// 1. 初始化哈希引擎
-	init_hash_engine(1, sizeof(music_t), sizeof(playlist_prop_t));
+	init_hash_engine(STORY_SLOT_CNT, sizeof(music_t), sizeof(playlist_prop_t));
 
 	// 2. 检查播放列表是否存在
 	// check_playlist();	// 正式使用时使用改api
 	rebuild_playlist();		// 调试时使用
+
+	// 3. 初始化播放列表
+	get_playlist_prop(&playlist_prop);
+	playlist_prop.total_record_cnt = STORY_SLOT_CNT;
+	set_playlist_prop(&playlist_prop);
 
 	for (int i = 0; i < sizeof(playlist_1) / sizeof(char*); i++) {
 		add_music(playlist_1[i][0], playlist_1[i]);
@@ -64,10 +74,28 @@ void build_story_favorite_playlist() {
 	printf("-- 歌曲更新后 ---------------------------------------\n");
 	show_playlist();
 	printf("-----------------------------------------------------\n");
+
+	playlist_prop_t prop;
+
+	memset(&prop, 0, sizeof(prop));
+
+	get_playlist_prop(&prop);
+
+	printf("-- %d\n", prop.record[0].total_music_cnt);
+	for (int j = 0; j < prop.record[0].total_music_cnt; j++) {
+		get_prev_music(0);
+	}
+	printf("-------------\n");
+
+	for (int j = 0; j < prop.record[0].total_music_cnt; j++) {
+		get_next_music(0);
+	}
+	printf("---------------------------------------\n");
 }
 
 uint32_t find_album_hash_slot(const char* album_name) {
 	uint32_t album_no = 0;
+	uint32_t record_cnt;
 	uint32_t hash_key = 0;
 	playlist_prop_t prop;
 	uint8_t do_find_album = 0;
@@ -77,9 +105,10 @@ uint32_t find_album_hash_slot(const char* album_name) {
 	get_playlist_prop(&prop);
 
 	album_no = prop.which_album_to_handle;
+	record_cnt = prop.total_record_cnt;
 
-	for (int i = 0; i < FAVORITE_ALBUM_CNT; i++) {
-		if (0 == strcmp(prop.album_name[i], album_name)) {
+	for (int i = 0; i < record_cnt; i++) {
+		if (0 == strcmp(prop.record[i].album_name, album_name)) {
 			hash_key = i;
 			do_find_album = 1;
 			break;
@@ -87,20 +116,36 @@ uint32_t find_album_hash_slot(const char* album_name) {
 	}
 
 	if (0 == do_find_album) {
-		strncpy(prop.album_name[album_no], album_name, FAVORITE_ALBUM_NAME_LEN);
-		hash_key = prop.which_album_to_handle = (album_no + 1) % FAVORITE_ALBUM_CNT;
+		strncpy(prop.record[album_no].album_name, album_name, MAX_ALBUM_NAME_LEN);
+		hash_key = album_no;
+		prop.which_album_to_handle = (album_no + 1) % record_cnt;
 		set_playlist_prop(&prop);
 	}
 
 	return hash_key;
 }
 
+#define ALBUM_SLOT_CNT MAX_ALBUM_CNT
 void build_album_favorite_playlist() {
 	const char* album_name_0 = "channel000";
-	const char* album_list_0[] = {
+	const char* album_list_0_add_1[] = {
 		"00A",
 		"00B",
 		"00C",
+		"00D",
+		"00E",
+	};
+
+	const char* album_list_0_del_1[] = {
+		"00A",
+		"00C",
+		"00E",
+	};
+
+	const char* album_list_0_add_2[] = {
+		"00D",
+		"00F",
+		"00G",
 	};
 
 	const char* album_name_1 = "channel001";
@@ -140,35 +185,61 @@ void build_album_favorite_playlist() {
 		"55C",
 		"55D",
 		"55E",
+		"55F",
 	};
 
 	const char* album_name_6 = "channel006";
 	const char* album_list_6[] = {
-		"066A",
+		"66A",
 		"66B",
 		"66C",
 		"66D",
 		"66E",
+		"66F",
+		"66G",
 	};
 
 	uint32_t hash_key = 0;
 
-	// 1. 初始化哈希引擎，专辑收藏最多3个专辑，超过3个，新的会替换旧的
-	init_hash_engine(FAVORITE_ALBUM_CNT, sizeof(music_t), sizeof(playlist_prop_t));
+	playlist_prop_t playlist_prop;
+
+	memset(&playlist_prop, 0, sizeof(playlist_prop));
+
+	// 1. 初始化哈希引擎
+	init_hash_engine(ALBUM_SLOT_CNT, sizeof(music_t), sizeof(playlist_prop_t));
 
 	// 2. 检查播放列表是否存在
 	// check_playlist();	// 正式使用时使用改api
 	rebuild_playlist();		// 调试时使用
 
+	// 3. 初始化播放列表
+	get_playlist_prop(&playlist_prop);
+	playlist_prop.total_record_cnt = ALBUM_SLOT_CNT;
+	set_playlist_prop(&playlist_prop);
+
 	/** START 添加三个专辑的歌曲 ***************/
 
+	// 第一个专辑增和删
 	hash_key = find_album_hash_slot(album_name_0);
 	reset_playlist(hash_key);
-	for (int i = 0; i < sizeof(album_list_0) / sizeof(char*); i++) {
-		add_music(hash_key, album_list_0[i]);
+	for (int i = 0; i < sizeof(album_list_0_add_1) / sizeof(char*); i++) {
+		add_music(hash_key, album_list_0_add_1[i]);
 	}
 	clean_playlist(hash_key);
 
+	//reset_playlist(hash_key);
+	for (int i = 0; i < sizeof(album_list_0_del_1) / sizeof(char*); i++) {
+		del_music(hash_key, album_list_0_del_1[i]);
+	}
+	//clean_playlist(hash_key);
+
+	reset_playlist(hash_key);
+	for (int i = 0; i < sizeof(album_list_0_add_2) / sizeof(char*); i++) {
+		add_music(hash_key, (album_list_0_add_2)[i]);
+	}
+	clean_playlist(hash_key);
+
+	// 添加第二个专辑
 	hash_key = find_album_hash_slot(album_name_1);
 	reset_playlist(hash_key);
 	for (int i = 0; i < sizeof(album_list_1) / sizeof(char*); i++) {
@@ -176,6 +247,7 @@ void build_album_favorite_playlist() {
 	}
 	clean_playlist(hash_key);
 
+	// 添加第三个专辑
 	hash_key = find_album_hash_slot(album_name_2);
 	reset_playlist(hash_key);
 	for (int i = 0; i < sizeof(album_list_2) / sizeof(char*); i++) {
@@ -209,7 +281,6 @@ void build_album_favorite_playlist() {
 	printf("---------------------------------------------------------\n");
 
 	/** START 再添加两个专辑歌曲，此时最早的两个专辑会被覆盖掉 ***************/
-
 	hash_key = find_album_hash_slot(album_name_5);
 	reset_playlist(hash_key);
 	for (int i = 0; i < sizeof(album_list_5) / sizeof(char*); i++) {
@@ -230,19 +301,27 @@ void build_album_favorite_playlist() {
 	show_playlist();
 	printf("---------------------------------------------------------\n");
 
+	playlist_prop_t prop;
+
+	memset(&prop, 0, sizeof(prop));
+
+	get_playlist_prop(&prop);
+
+	for (int i = 0; i < prop.total_record_cnt; i++) {
+		printf("-- [%d] = %d\n", i, prop.record[i].total_music_cnt);
+		for (int j = 0; j < prop.record[i].total_music_cnt; j++) {
+			get_prev_music(i);
+		}
+		printf("-------------\n");
+
+		for (int j = 0; j < prop.record[i].total_music_cnt; j++) {
+			get_next_music(i);
+		}
+		printf("---------------------------------------\n");
+	}
 }
 
 int main() {
 	build_story_favorite_playlist();
-	for (int i = 0; i < 15; i++) {
-		get_next_music(0);
-	}
-	
 	build_album_favorite_playlist();
-	for (int i = 0; i < 5; i++) {
-		for (int j = 0; j < 5; j++) {
-			get_prev_music(i);
-		}
-		printf("------------\n");
-	}
 }
