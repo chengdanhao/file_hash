@@ -3,7 +3,7 @@ PROJECT(hash_playlist)
 CMAKE_MINIMUM_REQUIRED(VERSION 2.4)
 
 if(CMAKE_COMPILER_IS_GNUCC)
-	set(USER_C_FLAGS "-Os -Wunused -Wall -Werror")
+	set(USER_C_FLAGS "-Os -std=c99 -Wunused -Wall -Werror")
     set(CMAKE_C_FLAGS "${USER_C_FLAGS} ${CMAKE_C_FLAGS}")
     message(STATUS "optional : ${USER_C_FLAGS}")   
 endif(CMAKE_COMPILER_IS_GNUCC)
