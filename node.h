@@ -6,9 +6,9 @@
 
 #define PLAYLIST_PATH "playlist"
 
-#define MUSIC_PATH_LEN 200
-#define MAX_ALBUM_NAME_LEN 20
-#define MAX_ALBUM_CNT 3
+#define MAX_MUSIC_PATH_LEN 200
+#define MAX_PLAYLIST_NAME_LEN 20
+#define MAX_PLAYLIST_CNT 3
 
 /*
  * 后续只需要修改这个头文件就可以自定义节点数据，底层代码不用修改
@@ -21,21 +21,23 @@ typedef enum {
 } action_t;
 
 typedef struct {
-	uint32_t total_music_cnt;
+	uint32_t music_cnt;
 	off_t prev_offset;
 	off_t next_offset;
-	char album_name[MAX_ALBUM_NAME_LEN];
-} playlist_record_t;
+	off_t saved_offset;	// 记录上一次播放记录
+	char name[MAX_PLAYLIST_NAME_LEN];
+} playlist_t;
 
 typedef struct {
-	uint32_t total_record_cnt;
-	uint32_t which_album_to_handle;
-	playlist_record_t record[MAX_ALBUM_CNT];
-} playlist_prop_t;
+	uint32_t playlist_cnt;
+	off_t saved_offset_for_all;
+	uint32_t which_playlist_to_handle;
+	playlist_t playlist[MAX_PLAYLIST_CNT];
+} playlist_header_t;
 
 typedef struct {
 	action_t delete_or_not;		// 判断歌曲是否删除
-	char path[MUSIC_PATH_LEN];
+	char path[MAX_MUSIC_PATH_LEN];
 } music_t;
 
 typedef enum {
@@ -60,13 +62,13 @@ void clean_playlist(uint32_t hash_key);
 void reset_playlist(uint32_t hash_key);
 /********************/
 
-void _get_playlist_prop(const char* func, const int line, playlist_prop_t* playlist_prop);
-void _set_playlist_prop(const char* func, const int line, playlist_prop_t* playlist_prop);
-// 获取播放列表属性，该属性存放在hash_property_t中
-#define get_playlist_prop(prop) _get_playlist_prop(__func__, __LINE__, prop)
+void _get_playlist_header(const char* func, const int line, playlist_header_t* playlist_header);
+void _set_playlist_header(const char* func, const int line, playlist_header_t* playlist_header);
+// 获取播放列表属性，该属性存放在hash_header_t中
+#define get_playlist_header(playlist_header) _get_playlist_header(__func__, __LINE__, playlist_header)
 
-// 设置播放列表属性，该属性存放在hash_property_t中
-#define set_playlist_prop(prop) _set_playlist_prop(__func__, __LINE__, prop)
+// 设置播放列表属性，该属性存放在hash_header_t中
+#define set_playlist_header(playlist_header) _set_playlist_header(__func__, __LINE__, playlist_header)
 
 // 创建/重建播放列表
 void check_playlist();

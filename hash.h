@@ -47,17 +47,17 @@ typedef struct {
 // 记录哈希链表的一些属性，由上层填充
 // 该结构体不能删除
 typedef struct {
-	void* prop;
-} hash_property_t;
+	void* data;
+} hash_header_t;
 
 // 创建哈希文件，一般不会直接调用。
 int _build_hash_file(const char* f, char* path, uint8_t rebuild);
 
 // 获取哈希属性
-int get_hash_prop(char* path, hash_property_t* output, int (*cb)(hash_property_t*, hash_property_t*));
+int get_hash_header(char* path, hash_header_t* output, int (*cb)(hash_header_t*, hash_header_t*));
 
 // 设置哈希属性
-int set_hash_prop(char* path, hash_property_t* output, int (*cb)(hash_property_t*, hash_property_t*));
+int set_hash_header(char* path, hash_header_t* output, int (*cb)(hash_header_t*, hash_header_t*));
 
 // 获取节点信息
 off_t get_node(char* path, get_node_method_t method, uint32_t hash_key, off_t offset, file_node_t* output, int (*cb)(file_node_t*, file_node_t*));
@@ -72,7 +72,7 @@ int del_node(char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t
 uint8_t traverse_nodes(char* path, traverse_type_t traverse_type, uint32_t hash_key, print_t print, node_data_t* input, traverse_action_t (*cb)(file_node_t*, node_data_t*));
 
 // 初始化哈希引擎，告知所需信息
-void init_hash_engine(int hash_slot_cnt, int hash_value_size, int hash_property_size);
+void init_hash_engine(int hash_slot_cnt, int hash_value_size, int hash_header_size);
 
 // 调用下面两个函数“创建”或“重建”哈希文件
 #define check_hash_file(path)       _build_hash_file(__func__, path, 0)

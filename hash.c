@@ -38,7 +38,7 @@
 
 static int s_hash_slot_cnt;
 static int s_hash_value_size;
-static int s_hash_property_size;
+static int s_hash_header_size;
 
 ssize_t happy_write(const char* f, int fd, void *buf, size_t count) {
 	int ret = -1;
@@ -83,14 +83,14 @@ exit:
 #define write(fd, buf, count)	happy_write(__func__, fd, buf, count)
 #define read(fd, buf, count)	happy_read(__func__, fd, buf, count)
 
-int get_hash_prop(char* path, hash_property_t* output, int (*cb)(hash_property_t*, hash_property_t*)) {
+int get_hash_header(char* path, hash_header_t* output, int (*cb)(hash_header_t*, hash_header_t*)) {
 	int fd = 0;
 	int ret = -1;
 	off_t curr_offset = 0;
-	hash_property_t prop;
-	void* prop_content = NULL;
+	hash_header_t hash_header;
+	void* header_content = NULL;
 
-	if (NULL == (prop_content = (void*)calloc(1, s_hash_property_size))) {
+	if (NULL == (header_content = (void*)calloc(1, s_hash_header_size))) {
 		hash_error("malloc failed.");
 		goto exit;
 	}
@@ -110,19 +110,19 @@ int get_hash_prop(char* path, hash_property_t* output, int (*cb)(hash_property_t
 		goto close_file;
 	}
 
-	if (read(fd, &prop, sizeof(hash_property_t)) < 0) {
-		hash_error("read hash_prop error.");
+	if (read(fd, &hash_header, sizeof(hash_header_t)) < 0) {
+		hash_error("read hash_header error.");
 		goto close_file;
 	}
 
-	if (read(fd, prop_content, s_hash_property_size) < 0) {
-		hash_error("read hash_prop_content error.");
+	if (read(fd, header_content, s_hash_header_size) < 0) {
+		hash_error("read hash_header_content error.");
 		goto close_file;
 	}
 
-	prop.prop = prop_content;
+	hash_header.data = header_content;
 
-	cb(&prop, output);
+	cb(&hash_header, output);
 
 	if (lseek(fd, curr_offset, SEEK_SET) < 0) {
 		hash_error("seek back to %ld fail.", curr_offset);
@@ -133,21 +133,21 @@ close_file:
 	close(fd);
 
 exit:
-	safe_free(prop_content);
+	safe_free(header_content);
 	return ret;
 
 }
 
-int set_hash_prop(char* path, hash_property_t* input, int (*cb)(hash_property_t*, hash_property_t*)) {
+int set_hash_header(char* path, hash_header_t* input, int (*cb)(hash_header_t*, hash_header_t*)) {
 	int fd = 0;
 	int ret = -1;
 	off_t curr_offset = 0;
-	hash_property_t prop;
-	void *prop_content = NULL;
+	hash_header_t hash_header;
+	void *header_content = NULL;
 
-	memset(&prop, 0, sizeof(hash_property_t));
+	memset(&hash_header, 0, sizeof(hash_header_t));
 
-	if (NULL == (prop_content = (void*)calloc(1, s_hash_property_size))) {
+	if (NULL == (header_content = (void*)calloc(1, s_hash_header_size))) {
 		hash_error("malloc failed.");
 		goto exit;
 	}
@@ -167,17 +167,17 @@ int set_hash_prop(char* path, hash_property_t* input, int (*cb)(hash_property_t*
 		goto close_file;
 	}
 
-	prop.prop = prop_content;
+	hash_header.data = header_content;
 
-	cb(&prop, input);
+	cb(&hash_header, input);
 
-	if (write(fd, &prop, sizeof(hash_property_t)) < 0) {
-		hash_error("write prop error.");
+	if (write(fd, &hash_header, sizeof(hash_header_t)) < 0) {
+		hash_error("write hash_header error.");
 		goto close_file;
 	}
 
-	if (write(fd, prop.prop, s_hash_property_size) < 0) {
-		hash_error("write prop_content error.");
+	if (write(fd, hash_header.data, s_hash_header_size) < 0) {
+		hash_error("write header_content error.");
 		goto close_file;
 	}
 
@@ -190,7 +190,7 @@ close_file:
 	close(fd);
 
 exit:
-	safe_free(prop_content);
+	safe_free(header_content);
 	return ret;
 }
 
@@ -199,13 +199,13 @@ int _build_hash_file(const char* f, char* path, uint8_t rebuild) {
 	int fd = 0;
 	uint32_t i = 0;
 	uint8_t file_exist = 0;
-	hash_property_t prop;
-	void* prop_content = NULL;
+	hash_header_t hash_header;
+	void* header_content = NULL;
 	file_node_t node;
 	void* hash_value = NULL;
 	off_t offset = 0;
 
-	memset(&prop, 0, sizeof(hash_property_t));
+	memset(&hash_header, 0, sizeof(hash_header_t));
 	memset(&node, 0, sizeof(file_node_t));
 
 	if (access(path, F_OK) < 0) {
@@ -220,7 +220,7 @@ int _build_hash_file(const char* f, char* path, uint8_t rebuild) {
 			hash_error("(%s calls) delete '%s' error.", f, path);
 			goto exit;
 		} else {
-			hash_info("(%s calls) delete old record '%s' success.", f, path);
+			hash_info("(%s calls) delete old hash file '%s' success.", f, path);
 			file_exist = 0;
 		}
 	}
@@ -231,18 +231,18 @@ int _build_hash_file(const char* f, char* path, uint8_t rebuild) {
 			goto exit;
 		}
 
-		if (NULL == (prop_content = (void*)calloc(1, s_hash_property_size))) {
+		if (NULL == (header_content = (void*)calloc(1, s_hash_header_size))) {
 			hash_error("malloc failed.");
 			goto exit;
 		}
 
-		if (write(fd, &prop, sizeof(hash_property_t)) < 0) {
-			hash_error("(%s calls) write prop error.", f);
+		if (write(fd, &hash_header, sizeof(hash_header_t)) < 0) {
+			hash_error("(%s calls) write hash_header error.", f);
 			goto close_file;
 		}
 
-		if (write(fd, prop_content, s_hash_property_size) < 0) {
-			hash_error("(%s calls) write prop error.", f);
+		if (write(fd, header_content, s_hash_header_size) < 0) {
+			hash_error("(%s calls) write hash_header error.", f);
 			goto close_file;
 		}
 
@@ -252,7 +252,7 @@ int _build_hash_file(const char* f, char* path, uint8_t rebuild) {
 		}
 
 		for (i = 0; i < s_hash_slot_cnt; i++) {
-			offset = (sizeof(hash_property_t) + s_hash_property_size) + i * (sizeof(file_node_t) + s_hash_value_size);
+			offset = (sizeof(hash_header_t) + s_hash_header_size) + i * (sizeof(file_node_t) + s_hash_value_size);
 			node.prev_offset = node.next_offset = offset;
 			if (write(fd, &node, sizeof(file_node_t)) < 0) {
 				hash_error("(%s calls) init node error.", f);
@@ -272,7 +272,7 @@ close_file:
 	close(fd);
 
 exit:
-	safe_free(prop_content);
+	safe_free(header_content);
 	safe_free(hash_value);
 	return ret;
 }
@@ -290,7 +290,7 @@ off_t get_node(char* path, get_node_method_t method, uint32_t hash_key, off_t of
 
 	if (method == GET_NODE_BY_HASH_KEY) {
 		group = hash_key % s_hash_slot_cnt;
-		offset = (sizeof(hash_property_t) + s_hash_property_size)\
+		offset = (sizeof(hash_header_t) + s_hash_header_size)\
 			+ group * (sizeof(file_node_t) + s_hash_value_size);
 	}
 
@@ -362,7 +362,7 @@ int add_node(char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t
 	memset(&node, 0, sizeof(file_node_t));
 
 	group = input->hash_key % s_hash_slot_cnt;
-	prev_offset = offset = first_node_offset = (sizeof(hash_property_t) + s_hash_property_size)\
+	prev_offset = offset = first_node_offset = (sizeof(hash_header_t) + s_hash_header_size)\
 		+ group * (sizeof(file_node_t) + s_hash_value_size);
 
 	if (NULL == (hash_value = (void*)calloc(1, s_hash_value_size))) {
@@ -410,7 +410,7 @@ int add_node(char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t
 #define MORE_ADD_NODE_INFO 0
 		if (0 == node.used || first_node_offset == node.next_offset) {
 			// 0 0, 首次使用第一个节点
-			if (0 == node.used && first_node_offset == node.next_offset) {
+			if (0 == node.used && first_node_offset == node.next_offset && first_node_offset == node.prev_offset) {
 #if MORE_ADD_NODE_INFO
 				hash_debug("(FIRST) <0x%lx> (0x%lx : %d ) <0x%lx>",
 					node.prev_offset, offset, input->hash_key, node.next_offset);
@@ -534,7 +534,7 @@ int del_node(char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t
 	}
 
 	group = input->hash_key % s_hash_slot_cnt;
-	offset = first_node_offset = (sizeof(hash_property_t) + s_hash_property_size)\
+	offset = first_node_offset = (sizeof(hash_header_t) + s_hash_header_size)\
 		+ group * (sizeof(file_node_t) + s_hash_value_size);
 
 	if ((fd = open(path, O_RDWR)) < 0) {
@@ -634,12 +634,12 @@ uint8_t traverse_nodes(char* path, traverse_type_t traverse_type, uint32_t hash_
 			continue;
 		}
 
-		offset = first_node_offset = (sizeof(hash_property_t) + s_hash_property_size)\
+		offset = first_node_offset = (sizeof(hash_header_t) + s_hash_header_size)\
 			+ i * (sizeof(file_node_t) + s_hash_value_size);
 
 		s_first_node = 1;
 		if (lseek(fd, first_node_offset, SEEK_SET) < 0) {
-			hash_error("skip %s property failed.", path);
+			hash_error("skip %s hash header failed.", path);
 			goto close_file;
 		}
 
@@ -713,10 +713,10 @@ exit:
 	return break_or_not;
 }
 
-void init_hash_engine(int hash_slot_cnt, int hash_value_size, int hash_property_size) {
+void init_hash_engine(int hash_slot_cnt, int hash_value_size, int hash_header_size) {
 	s_hash_slot_cnt = hash_slot_cnt;
 	s_hash_value_size = hash_value_size;
-	s_hash_property_size = hash_property_size;
-	hash_info("hash_slot_cnt = %d, hash_value_size = %d, hash_property_size = %d.",
-		hash_slot_cnt, hash_value_size, hash_property_size);
+	s_hash_header_size = hash_header_size;
+	hash_info("hash_slot_cnt = %d, hash_value_size = %d, hash_header_size = %d.",
+		hash_slot_cnt, hash_value_size, hash_header_size);
 }
