@@ -1,0 +1,21 @@
+PROJECT(hash_playlist)
+
+CMAKE_MINIMUM_REQUIRED(VERSION 2.4)
+
+# 头文件目录
+INCLUDE_DIRECTORIES(
+  ${PROJECT_SOURCE_DIR}/inc
+  /usr/include
+)
+
+# 链接库目录
+LINK_DIRECTORIES(
+  /usr/local/lib
+  /use/lib
+)
+
+SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
+
+# 子目录
+ADD_SUBDIRECTORY(inc)
+ADD_SUBDIRECTORY(src)
