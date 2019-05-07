@@ -3,6 +3,6 @@ script:
   - mkdir build
   - cd build && cmake ..
   - make
-  - ./bin/music_playlist
+  - ./bin/hash_playlist
 after_success:
   - rm -rf build
