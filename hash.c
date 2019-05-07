@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -38,7 +39,7 @@
 
 static int s_hash_slot_cnt;
 static int s_hash_value_size;
-static int s_hash_header_size;
+static int s_hash_header_data_size;
 
 ssize_t happy_write(const char* f, int fd, void *buf, size_t count) {
 	int ret = -1;
@@ -90,33 +91,33 @@ int get_hash_header(char* path, hash_header_t* output, int (*cb)(hash_header_t*,
 	hash_header_t hash_header;
 	void* header_content = NULL;
 
-	if (NULL == (header_content = (void*)calloc(1, s_hash_header_size))) {
-		hash_error("malloc failed.");
+	if (NULL == (header_content = (void*)calloc(1, s_hash_header_data_size))) {
+		hash_error("calloc failed.");
 		goto exit;
 	}
 
 	if ((fd = open(path, O_RDONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0) {
-		hash_error("create file %s fail.", path);
+		hash_error("create file %s fail : %s.", path, strerror(errno));
 		goto exit;
 	}
 
 	if ((curr_offset = lseek(fd, 0, SEEK_CUR)) < 0) {
-		hash_error("seek to %ld fail.", curr_offset);
+		hash_error("seek to %ld fail : %s.", curr_offset, strerror(errno));
 		goto close_file;
 	}
 
 	if (lseek(fd, 0, SEEK_SET) < 0) {
-		hash_error("seek to head fail.");
+		hash_error("seek to head fail : %s.", strerror(errno));
 		goto close_file;
 	}
 
 	if (read(fd, &hash_header, sizeof(hash_header_t)) < 0) {
-		hash_error("read hash_header error.");
+		hash_error("read hash_header error : %s.", strerror(errno));
 		goto close_file;
 	}
 
-	if (read(fd, header_content, s_hash_header_size) < 0) {
-		hash_error("read hash_header_content error.");
+	if (read(fd, header_content, s_hash_header_data_size) < 0) {
+		hash_error("read hash_header_content error : %s.", strerror(errno));
 		goto close_file;
 	}
 
@@ -125,7 +126,7 @@ int get_hash_header(char* path, hash_header_t* output, int (*cb)(hash_header_t*,
 	cb(&hash_header, output);
 
 	if (lseek(fd, curr_offset, SEEK_SET) < 0) {
-		hash_error("seek back to %ld fail.", curr_offset);
+		hash_error("seek back to %ld fail : %s.", curr_offset, strerror(errno));
 		goto close_file;
 	}
 
@@ -147,23 +148,23 @@ int set_hash_header(char* path, hash_header_t* input, int (*cb)(hash_header_t*, 
 
 	memset(&hash_header, 0, sizeof(hash_header_t));
 
-	if (NULL == (header_content = (void*)calloc(1, s_hash_header_size))) {
-		hash_error("malloc failed.");
+	if (NULL == (header_content = (void*)calloc(1, s_hash_header_data_size))) {
+		hash_error("calloc failed.");
 		goto exit;
 	}
 
 	if ((fd = open(path, O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0) {
-		hash_error("open file %s fail.", path);
+		hash_error("open file %s fail : %s.", path, strerror(errno));
 		goto exit;
 	}
 
 	if ((curr_offset = lseek(fd, 0, SEEK_CUR)) < 0) {
-		hash_error("seek to %ld fail.", curr_offset);
+		hash_error("seek to %ld fail : %s.", curr_offset, strerror(errno));
 		goto close_file;
 	}
 
 	if (lseek(fd, 0, SEEK_SET) < 0) {
-		hash_error("seek to head fail.");
+		hash_error("seek to head fail : %s.", strerror(errno));
 		goto close_file;
 	}
 
@@ -172,17 +173,17 @@ int set_hash_header(char* path, hash_header_t* input, int (*cb)(hash_header_t*, 
 	cb(&hash_header, input);
 
 	if (write(fd, &hash_header, sizeof(hash_header_t)) < 0) {
-		hash_error("write hash_header error.");
+		hash_error("write hash_header error : %s.", strerror(errno));
 		goto close_file;
 	}
 
-	if (write(fd, hash_header.data, s_hash_header_size) < 0) {
-		hash_error("write header_content error.");
+	if (write(fd, hash_header.data, s_hash_header_data_size) < 0) {
+		hash_error("write header_content error : %s.", strerror(errno));
 		goto close_file;
 	}
 
 	if (lseek(fd, curr_offset, SEEK_SET) < 0) {
-		hash_error("seek back to %ld fail.", curr_offset);
+		hash_error("seek back to %ld fail : %s.", curr_offset, strerror(errno));
 		goto close_file;
 	}
 
@@ -217,7 +218,7 @@ int _build_hash_file(const char* f, char* path, uint8_t rebuild) {
 
 	if (1 == file_exist && 1 == rebuild) {
 		if (unlink(path) < 0) {
-			hash_error("(%s calls) delete '%s' error.", f, path);
+			hash_error("(%s calls) delete '%s' error : %s.", f, path, strerror(errno));
 			goto exit;
 		} else {
 			hash_info("(%s calls) delete old hash file '%s' success.", f, path);
@@ -227,40 +228,40 @@ int _build_hash_file(const char* f, char* path, uint8_t rebuild) {
 
 	if (0 == file_exist) {
 		if ((fd = open(path, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0) {
-			hash_error("(%s calls) create file %s fail.", f, path);
+			hash_error("(%s calls) create file %s fail : %s.", f, path, strerror(errno));
 			goto exit;
 		}
 
-		if (NULL == (header_content = (void*)calloc(1, s_hash_header_size))) {
-			hash_error("malloc failed.");
+		if (NULL == (header_content = (void*)calloc(1, s_hash_header_data_size))) {
+			hash_error("calloc failed.");
 			goto exit;
 		}
 
 		if (write(fd, &hash_header, sizeof(hash_header_t)) < 0) {
-			hash_error("(%s calls) write hash_header error.", f);
+			hash_error("(%s calls) write hash_header error : %s.", f, strerror(errno));
 			goto close_file;
 		}
 
-		if (write(fd, header_content, s_hash_header_size) < 0) {
-			hash_error("(%s calls) write hash_header error.", f);
+		if (write(fd, header_content, s_hash_header_data_size) < 0) {
+			hash_error("(%s calls) write hash_header error : %s.", f, strerror(errno));
 			goto close_file;
 		}
 
 		if (NULL == (hash_value = (void*)calloc(1, s_hash_value_size))) {
-			hash_error("(%s calls) malloc failed.", f);
+			hash_error("(%s calls) calloc failed.", f);
 			goto close_file;
 		}
 
 		for (i = 0; i < s_hash_slot_cnt; i++) {
-			offset = (sizeof(hash_header_t) + s_hash_header_size) + i * (sizeof(file_node_t) + s_hash_value_size);
+			offset = (sizeof(hash_header_t) + s_hash_header_data_size) + i * (sizeof(file_node_t) + s_hash_value_size);
 			node.prev_offset = node.next_offset = offset;
 			if (write(fd, &node, sizeof(file_node_t)) < 0) {
-				hash_error("(%s calls) init node error.", f);
+				hash_error("(%s calls) init node error : %s.", f, strerror(errno));
 				goto close_file;
 			}
 
 			if (write(fd, hash_value, s_hash_value_size) < 0) {
-				hash_error("(%s calls) init hash_value error.", f);
+				hash_error("(%s calls) init hash_value error : %s.", f, strerror(errno));
 				goto close_file;
 			}
 		}
@@ -290,51 +291,51 @@ off_t get_node(char* path, get_node_method_t method, uint32_t hash_key, off_t of
 
 	if (method == GET_NODE_BY_HASH_KEY) {
 		group = hash_key % s_hash_slot_cnt;
-		offset = (sizeof(hash_header_t) + s_hash_header_size)\
+		offset = (sizeof(hash_header_t) + s_hash_header_data_size)\
 			+ group * (sizeof(file_node_t) + s_hash_value_size);
 	}
 
 	if (NULL == (hash_value = (void*)calloc(1, s_hash_value_size))) {
-		hash_error("malloc failed.");
+		hash_error("calloc failed.");
 		goto exit;
 	}
 
 	if ((fd = open(path, O_RDONLY)) < 0) {
-		hash_error("Open file %s fail.", path);
+		hash_error("open file %s fail : %s.", path, strerror(errno));
 		goto exit;
 	}
 
 	// 记录当前偏移量，后面会回退到该偏移量
 	if ((curr_offset = lseek(fd, 0, SEEK_CUR)) < 0) {
-		hash_error("seek to %ld fail.", curr_offset);
+		hash_error("seek to %ld fail : %s.", curr_offset, strerror(errno));
 		goto close_file;
 	}
 
 	// 定位到指定的偏移量处
 	if (lseek(fd, offset, SEEK_SET) < 0) {
-		hash_error("seek to %ld fail.", offset);
+		hash_error("seek to %ld fail : %s.", offset, strerror(errno));
 		goto close_file;
 	}
 
 	if (read(fd, &node, sizeof(file_node_t)) < 0) {
-		hash_error("read node failed.");
+		hash_error("read node failed : %s.", strerror(errno));
 		goto close_file;
 	}
 
 	if (read(fd, hash_value, s_hash_value_size) < 0) {
-		hash_error("read hash_value failed.");
+		hash_error("read hash_value failed : %s.", strerror(errno));
 		goto close_file;
 	}
 
 	// 建立关联，方便后面使用。之后不要破坏这种关联（比如read调用）
-	node.data.hash_value = hash_value;
+	node.data.value = hash_value;
 
 	// 在回调函数中可以返回上/下一首歌曲的偏移量
 	cb(&node, output);
 
 	// 重新指向开始时的偏移量
 	if (lseek(fd, curr_offset, SEEK_SET) < 0) {
-		hash_error("seek back to %ld fail.", curr_offset);
+		hash_error("seek back to %ld fail : %s.", curr_offset, strerror(errno));
 		goto close_file;
 	}
 
@@ -354,49 +355,48 @@ int add_node(char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t
 	uint32_t group = 0;
 	off_t new_node_offset = 0;
 	off_t offset = 0;
-	off_t prev_offset = 0;
 	off_t first_node_offset = 0;
 	file_node_t node;
 	void* hash_value = NULL;
 
 	memset(&node, 0, sizeof(file_node_t));
 
-	group = input->hash_key % s_hash_slot_cnt;
-	prev_offset = offset = first_node_offset = (sizeof(hash_header_t) + s_hash_header_size)\
+	group = input->key % s_hash_slot_cnt;
+	offset = first_node_offset = (sizeof(hash_header_t) + s_hash_header_data_size)\
 		+ group * (sizeof(file_node_t) + s_hash_value_size);
 
 	if (NULL == (hash_value = (void*)calloc(1, s_hash_value_size))) {
-		hash_error("malloc failed.");
+		hash_error("calloc failed.");
 		goto exit;
 	}
 
 	if ((fd = open(path, O_RDWR)) < 0) {
-		hash_error("Open file %s fail.", path);
+		hash_error("open file %s fail : %s.", path, strerror(errno));
 		goto exit;
 	}
 
 	do {
 		/* START 拿一个节点数据，取完后文件指针不要挪动 */
 		if (lseek(fd, offset, SEEK_SET) < 0) {
-			hash_error("seek to %ld fail.", offset);
+			hash_error("seek to %ld fail : %s.", offset, strerror(errno));
 			goto close_file;
 		}
 
 		if (read(fd, &node, sizeof(file_node_t)) < 0) {
-			hash_error("read node failed.");
+			hash_error("read node failed : %s.", strerror(errno));
 			goto close_file;
 		}
 
 		if (read(fd, hash_value, s_hash_value_size) < 0) {
-			hash_error("read hash_value failed.");
+			hash_error("read hash_value failed : %s.", strerror(errno));
 			goto close_file;
 		}
 
 		// 建立关联，方便后面使用。之后不要破坏这种关联（比如read调用）
-		node.data.hash_value = hash_value;
+		node.data.value = hash_value;
 
 		if (lseek(fd, offset, SEEK_SET) < 0) {
-			hash_error("seek back to %ld fail.", offset);
+			hash_error("seek back to %ld fail : %s.", offset, strerror(errno));
 			goto close_file;
 		}
 		/* END 拿一个节点数据，取完后文件指针不要挪动 */
@@ -413,7 +413,7 @@ int add_node(char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t
 			if (0 == node.used && first_node_offset == node.next_offset && first_node_offset == node.prev_offset) {
 #if MORE_ADD_NODE_INFO
 				hash_debug("(FIRST) <0x%lx> (0x%lx : %d ) <0x%lx>",
-					node.prev_offset, offset, input->hash_key, node.next_offset);
+					node.prev_offset, offset, input->key, node.next_offset);
 #endif
 				node.prev_offset = node.next_offset = first_node_offset;
 			}
@@ -422,7 +422,7 @@ int add_node(char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t
 			else if (0 == node.used && first_node_offset != node.next_offset) {
 #if MORE_ADD_NODE_INFO
 				hash_debug(" (USED) <0x%lx> (0x%lx : %d ) <0x%lx>",
-					node.prev_offset, offset, input->hash_key, node.next_offset);
+					node.prev_offset, offset, input->key, node.next_offset);
 #endif
 			}
 
@@ -432,7 +432,7 @@ int add_node(char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t
 
 				// 新节点在文件末尾插入，获取新节点偏移量
 				if ((new_node_offset = lseek(fd, 0, SEEK_END)) < 0) {
-					hash_error("prepare new node, seek to %ld fail.", offset);
+					hash_error("prepare new node, seek to %ld fail : %s.", offset, strerror(errno));
 					goto close_file;
 				}
 
@@ -442,7 +442,7 @@ int add_node(char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t
 				node.next_offset = new_node_offset;
 
 				if (write(fd, &node, sizeof(file_node_t)) < 0) {
-					hash_error("write node error.");
+					hash_error("write node error : %s.", strerror(errno));
 					goto close_file;
 				}
 				/**** 1. END 修改当前节点的next_offset值，指向新节点 ****/
@@ -455,7 +455,7 @@ int add_node(char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t
 				memset(&first_node, 0, sizeof(first_node));
 
 				if (read(fd, &first_node, sizeof(file_node_t)) < 0) {
-					hash_error("read node error.");
+					hash_error("read node error : %s.", strerror(errno));
 					goto close_file;
 				}
 
@@ -465,7 +465,7 @@ int add_node(char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t
 				lseek(fd, first_node_offset, SEEK_SET);
 
 				if (write(fd, &first_node, sizeof(file_node_t)) < 0) {
-					hash_error("write node error.");
+					hash_error("write node error : %s.", strerror(errno));
 					goto close_file;
 				}
 				/**** 2. END 修改头节点的prev_offset值，指向新节点 ****/
@@ -479,7 +479,7 @@ int add_node(char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t
 
 #if MORE_ADD_NODE_INFO
 				hash_debug(" (TAIL) <0x%lx> (0x%lx : %d ) <0x%lx>",
-					node.prev_offset, new_node_offset, input->hash_key, node.next_offset);
+					node.prev_offset, new_node_offset, input->key, node.next_offset);
 #endif
 			}
 #undef MORE_ADD_NODE_INFO
@@ -490,19 +490,18 @@ int add_node(char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t
 			cb(&(node.data), input);
 
 			if (write(fd, &node, sizeof(file_node_t)) < 0) {
-				hash_error("write node error.");
+				hash_error("write node error : %s.", strerror(errno));
 				goto close_file;
 			}
 
-			if (write(fd, node.data.hash_value, s_hash_value_size) < 0) {
-				hash_error("write hash_value error.");
+			if (write(fd, node.data.value, s_hash_value_size) < 0) {
+				hash_error("write hash_value error : %s.", strerror(errno));
 				goto close_file;
 			}
 			/**** 4. END 写入新节点的其他信息 ****/
 
 			break;
 		} else {
-			prev_offset = offset;
 			offset = node.next_offset;
 		}
 	}  while (offset != first_node_offset);
@@ -533,38 +532,38 @@ int del_node(char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t
 		goto exit;
 	}
 
-	group = input->hash_key % s_hash_slot_cnt;
-	offset = first_node_offset = (sizeof(hash_header_t) + s_hash_header_size)\
+	group = input->key % s_hash_slot_cnt;
+	offset = first_node_offset = (sizeof(hash_header_t) + s_hash_header_data_size)\
 		+ group * (sizeof(file_node_t) + s_hash_value_size);
 
 	if ((fd = open(path, O_RDWR)) < 0) {
-		hash_error("Open file %s fail.", path);
+		hash_error("open file %s fail : %s.", path, strerror(errno));
 		goto exit;
 	}
 
 	if (NULL == (hash_value = (void*)calloc(1, s_hash_value_size))) {
-		hash_error("malloc failed.");
+		hash_error("calloc failed.");
 		goto exit;
 	}
 
 	do {
 		if (lseek(fd, offset, SEEK_SET) < 0) {
-			hash_error("seek to %ld fail.", offset);
+			hash_error("seek to %ld fail : %s.", offset, strerror(errno));
 			goto close_file;
 		}
 
 		if (read(fd, &node, sizeof(file_node_t)) < 0) {
-			hash_error("read node failed.");
+			hash_error("read node failed : %s.", strerror(errno));
 			goto close_file;
 		}
 
 		if (read(fd, hash_value, s_hash_value_size) < 0) {
-			hash_error("read hash_value failed.");
+			hash_error("read hash_value failed : %s.", strerror(errno));
 			goto close_file;
 		}
 
 		// 建立关联，方便后面使用。之后不要破坏这种关联（比如read调用）
-		node.data.hash_value = hash_value;
+		node.data.value = hash_value;
 
 		// 比较的同时，清空node.data中的相关数据
 		if (0 == cb(&(node.data), input)) {
@@ -572,18 +571,17 @@ int del_node(char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t
 
 			// 移到节点起始位置
 			if (lseek(fd, offset, SEEK_SET) < 0) {
-				hash_error("seek back to %ld fail.", offset);
+				hash_error("seek back to %ld fail : %s.", offset, strerror(errno));
 				goto close_file;
 			}
 
 			if (write(fd, &node, sizeof(file_node_t)) < 0) {
-				hash_error("del node error.");
-				perror("delete");
+				hash_error("del node error : %s.", strerror(errno));
 				goto close_file;
 			}
 
-			if (write(fd, node.data.hash_value, s_hash_value_size) < 0) {
-				hash_error("del hash_value error.");
+			if (write(fd, node.data.value, s_hash_value_size) < 0) {
+				hash_error("del hash_value error : %s.", strerror(errno));
 				goto close_file;
 			}
 
@@ -618,12 +616,12 @@ uint8_t traverse_nodes(char* path, traverse_type_t traverse_type, uint32_t hash_
 	memset(&node, 0, sizeof(file_node_t));
 
 	if ((fd = open(path, O_RDWR)) < 0) {
-		hash_error("Open %s fail.", path);
+		hash_error("open %s fail : %s.", path, strerror(errno));
 		goto exit;
 	}
 
 	if (NULL == (hash_value = (void*)calloc(1, s_hash_value_size))) {
-		hash_error("malloc failed.");
+		hash_error("calloc failed.");
 		goto exit;
 	}
 
@@ -634,12 +632,12 @@ uint8_t traverse_nodes(char* path, traverse_type_t traverse_type, uint32_t hash_
 			continue;
 		}
 
-		offset = first_node_offset = (sizeof(hash_header_t) + s_hash_header_size)\
+		offset = first_node_offset = (sizeof(hash_header_t) + s_hash_header_data_size)\
 			+ i * (sizeof(file_node_t) + s_hash_value_size);
 
 		s_first_node = 1;
 		if (lseek(fd, first_node_offset, SEEK_SET) < 0) {
-			hash_error("skip %s hash header failed.", path);
+			hash_error("skip %s hash header failed : %s.", path, strerror(errno));
 			goto close_file;
 		}
 
@@ -647,21 +645,21 @@ uint8_t traverse_nodes(char* path, traverse_type_t traverse_type, uint32_t hash_
 
 		do {
 			if (lseek(fd, offset, SEEK_SET) < 0) {
-				hash_error("seek to %ld fail.", offset);
+				hash_error("seek to %ld fail : %s.", offset, strerror(errno));
 				goto close_file;
 			}
 
 			if (read(fd, &node, sizeof(file_node_t)) < 0) {
-				hash_error("read node failed.");
+				hash_error("read node failed : %s.", strerror(errno));
 				goto close_file;
 			}
 
 			if (read(fd, hash_value, s_hash_value_size) < 0) {
-				hash_error("read hash_value failed.");
+				hash_error("read hash_value failed : %s.", strerror(errno));
 				goto close_file;
 			}
 
-			node.data.hash_value = hash_value;
+			node.data.value = hash_value;
 
 			if (s_first_node) {
 				s_first_node = 0;
@@ -678,18 +676,18 @@ uint8_t traverse_nodes(char* path, traverse_type_t traverse_type, uint32_t hash_
 			if (TRAVERSE_ACTION_UPDATE & action) {
 				// 跳回到节点头部
 				if (lseek(fd, offset, SEEK_SET) < 0) {
-					hash_error("seek to %ld fail.", offset);
+					hash_error("seek to %ld fail : %s.", offset, strerror(errno));
 					goto close_file;
 				}
 
 				if (write(fd, &node, sizeof(file_node_t)) < 0) {
-					hash_error("del node error.");
+					hash_error("del node error : %s.", strerror(errno));
 					perror("delete");
 					goto close_file;
 				}
 
-				if (write(fd, node.data.hash_value, s_hash_value_size) < 0) {
-					hash_error("del hash_value error.");
+				if (write(fd, node.data.value, s_hash_value_size) < 0) {
+					hash_error("del hash_value error : %s.", strerror(errno));
 					goto close_file;
 				}
 			}
@@ -716,7 +714,7 @@ exit:
 void init_hash_engine(int hash_slot_cnt, int hash_value_size, int hash_header_size) {
 	s_hash_slot_cnt = hash_slot_cnt;
 	s_hash_value_size = hash_value_size;
-	s_hash_header_size = hash_header_size;
+	s_hash_header_data_size = hash_header_size;
 	hash_info("hash_slot_cnt = %d, hash_value_size = %d, hash_header_size = %d.",
 		hash_slot_cnt, hash_value_size, hash_header_size);
 }

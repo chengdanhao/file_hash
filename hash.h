@@ -32,8 +32,8 @@ typedef enum {
 
 // 节点的数据部分，分key和value，其中value由用户再上层填充
 typedef struct {
-	uint32_t hash_key;	// 该字段不能删！！！
-	void* hash_value;
+	uint32_t key;	// 该字段不能删！！！
+	void* value;
 } node_data_t;
 
 // 文件节点，以链式方式存储在文件中

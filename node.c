@@ -52,26 +52,26 @@ int set_playlist_cb(hash_header_t* file, hash_header_t* input) {
 }
 
 int get_music_cb(file_node_t* node, file_node_t* output) {
-	music_t* file_music = (music_t *)(node->data.hash_value);
+	music_t* file_music = (music_t *)(node->data.value);
 
 	output->prev_offset = node->prev_offset;
 	output->next_offset = node->next_offset;
-	memcpy(output->data.hash_value, node->data.hash_value, sizeof(music_t));
+	memcpy(output->data.value, node->data.value, sizeof(music_t));
 }
 
 int add_node_cb(node_data_t* file, node_data_t* input) {
-	file->hash_key = input->hash_key;
-	memcpy(file->hash_value, input->hash_value, sizeof(music_t));
+	file->key = input->key;
+	memcpy(file->value, input->value, sizeof(music_t));
 	return 0;
 }
 
 int del_node_cb(node_data_t* file, node_data_t* input) {
 	int ret = -1;
-	music_t* file_music = (music_t*)(file->hash_value);
-	music_t* input_music = (music_t*)(input->hash_value);
+	music_t* file_music = (music_t*)(file->value);
+	music_t* input_music = (music_t*)(input->value);
 
 	if (0 == strncmp(file_music->path, input_music->path, MAX_MUSIC_PATH_LEN)) {
-		file->hash_key = 0;
+		file->key = 0;
 		file_music->delete_or_not = MUSIC_DELETE;
 		memset(file_music->path, 0, MAX_MUSIC_PATH_LEN);
 		ret = 0;
@@ -81,7 +81,7 @@ int del_node_cb(node_data_t* file, node_data_t* input) {
 }
 
 traverse_action_t print_node_cb(file_node_t* node, node_data_t* input) {
-	music_t* music = (music_t*)(node->data.hash_value);
+	music_t* music = (music_t*)(node->data.value);
 
 	if (node->used) {
 		if (MUSIC_DELETE == music->delete_or_not) {
@@ -98,7 +98,7 @@ exit:
 }
 
 traverse_action_t reset_node_cb(file_node_t* node, node_data_t* input) {
-	music_t* file_music = (music_t*)(node->data.hash_value);
+	music_t* file_music = (music_t*)(node->data.value);
 
 	if (node->used) {
 		file_music->delete_or_not = MUSIC_DELETE;
@@ -109,13 +109,13 @@ exit:
 }
 
 traverse_action_t clean_node_cb(file_node_t* node, node_data_t* input) {
-	music_t* file_music = (music_t*)(node->data.hash_value);
+	music_t* file_music = (music_t*)(node->data.value);
 
 	if (node->used && MUSIC_DELETE == file_music->delete_or_not) {
 		node_warn("delete %s.", file_music->path);
 		node->used = 0;
-		node->data.hash_key = 0;
-		memset(node->data.hash_value, 0, sizeof(music_t));
+		node->data.key = 0;
+		memset(node->data.value, 0, sizeof(music_t));
 	}
 
 exit:
@@ -125,8 +125,8 @@ exit:
 // 如果找到，返回1
 traverse_action_t find_node_cb(file_node_t* node, node_data_t* input) {
 	int action = TRAVERSE_ACTION_DO_NOTHING;
-	music_t* file_music = (music_t*)(node->data.hash_value);
-	music_t* input_music = (music_t*)(input->hash_value);
+	music_t* file_music = (music_t*)(node->data.value);
+	music_t* input_music = (music_t*)(input->value);
 
 	if (node->used && 0 == strcmp(file_music->path, input_music->path)) {
 		file_music->delete_or_not = MUSIC_KEEP;
@@ -201,7 +201,7 @@ void get_music(uint32_t hash_key, direction_t next_or_prev) {
 	uint32_t total_music_cnt = 0;
 	get_node_method_t method = GET_NODE_BY_HASH_KEY;
 	music_t s_music;
-	file_node_t s_node = { .data = { .hash_value = &s_music } };
+	file_node_t s_node = { .data = { .value = &s_music } };
 
 	memset(&playlist_header, 0, sizeof(playlist_header));
 
@@ -241,12 +241,10 @@ exit:
 
 void get_prev_music(uint32_t hash_key) {
 	get_music(hash_key, PREV_MUSIC);
-	//return s_prev_music_offset;
 }
 
 void get_next_music(uint32_t hash_key) {
 	get_music(hash_key, NEXT_MUSIC);
-	//return s_next_music_offset;
 }
 
 off_t is_music_exist(uint32_t hash_key, const char* music_path) {
@@ -258,8 +256,8 @@ off_t is_music_exist(uint32_t hash_key, const char* music_path) {
 
 	strncpy(music.path, music_path, MAX_MUSIC_PATH_LEN);
 
-	data.hash_key = hash_key;
-	data.hash_value = &music;
+	data.key = hash_key;
+	data.value = &music;
 
 	return traverse_nodes(PLAYLIST_PATH, TRAVERSE_SPECIFIC_HASH_KEY, hash_key, WITHOUT_PRINT, &data, find_node_cb);
 }
@@ -286,8 +284,8 @@ int add_music(uint32_t hash_key, const char* music_path) {
 	music.delete_or_not = MUSIC_KEEP;
 	strncpy(music.path, music_path, sizeof(music.path));
 
-	data.hash_key = hash_key;
-	data.hash_value = &music;
+	data.key = hash_key;
+	data.value = &music;
 
 	if (0 != (ret = add_node(PLAYLIST_PATH, &data, add_node_cb))) {
 		node_error("add failed : %s.", music_path);
@@ -319,8 +317,8 @@ int del_music(uint32_t hash_key, const char* music_path) {
 	music.delete_or_not = MUSIC_DELETE;
 	strncpy(music.path, music_path, MAX_MUSIC_PATH_LEN);
 
-	data.hash_key = hash_key;
-	data.hash_value = &music;
+	data.key = hash_key;
+	data.value = &music;
 
 	if (0 != (ret = del_node(PLAYLIST_PATH, &data, del_node_cb))) {
 		node_error("del failed : %s.", music_path);
