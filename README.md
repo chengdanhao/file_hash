@@ -1,5 +1,7 @@
 # hash_playlist
 
+[![Build Status](https://travis-ci.org/chengdanhao/hash_playlist.svg?branch=master)](https://travis-ci.org/chengdanhao/hash_playlist)
+
 **项目来源于一个客户需求，无敏感信息。**
 
 文件形式存储歌曲播放列表，根据用户指定的哈希值，将歌曲散列到不同的哈希槽当中，每个哈希槽的节点以链式方式存储，支持歌曲增、删、查、改。
