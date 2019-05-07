@@ -1,0 +1,8 @@
+language: c
+script:
+  - mkdir build
+  - cd build && cmake ..
+  - make
+  - ./bin/music_playlist
+after_success:
+  - rm -rf build
