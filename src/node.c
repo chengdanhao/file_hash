@@ -40,6 +40,8 @@ int get_playlist_cb(hash_header_t* file, hash_header_t* output) {
 	output_playlist->which_playlist_to_handle = file_playlist->which_playlist_to_handle;
 	output_playlist->playlist_cnt = file_playlist->playlist_cnt;
 	memcpy(output_playlist->playlist, file_playlist->playlist, sizeof(output_playlist->playlist));
+
+	return 0;
 }
 
 int set_playlist_cb(hash_header_t* file, hash_header_t* input) {
@@ -49,19 +51,22 @@ int set_playlist_cb(hash_header_t* file, hash_header_t* input) {
 	file_playlist->which_playlist_to_handle = input_playlist->which_playlist_to_handle;
 	file_playlist->playlist_cnt = input_playlist->playlist_cnt;
 	memcpy(file_playlist->playlist, input_playlist->playlist, sizeof(input_playlist->playlist));
+
+	return 0;
 }
 
 int get_music_cb(file_node_t* node, file_node_t* output) {
-	music_t* file_music = (music_t *)(node->data.value);
-
 	output->prev_offset = node->prev_offset;
 	output->next_offset = node->next_offset;
 	memcpy(output->data.value, node->data.value, sizeof(music_t));
+
+	return 0;
 }
 
 int add_node_cb(node_data_t* file, node_data_t* input) {
 	file->key = input->key;
 	memcpy(file->value, input->value, sizeof(music_t));
+
 	return 0;
 }
 
@@ -93,7 +98,6 @@ traverse_action_t print_node_cb(file_node_t* node, node_data_t* input) {
 		printf("*");
 	}
 
-exit:
 	return TRAVERSE_ACTION_DO_NOTHING;
 }
 
@@ -104,7 +108,6 @@ traverse_action_t reset_node_cb(file_node_t* node, node_data_t* input) {
 		file_music->delete_or_not = MUSIC_DELETE;
 	}
 
-exit:
 	return TRAVERSE_ACTION_UPDATE;
 }
 
@@ -118,7 +121,6 @@ traverse_action_t clean_node_cb(file_node_t* node, node_data_t* input) {
 		memset(node->data.value, 0, sizeof(music_t));
 	}
 
-exit:
 	return TRAVERSE_ACTION_UPDATE;
 }
 
@@ -133,7 +135,6 @@ traverse_action_t find_node_cb(file_node_t* node, node_data_t* input) {
 		action = TRAVERSE_ACTION_UPDATE | TRAVERSE_ACTION_BREAK;
 	}
 
-exit:
 	return action;
 }
 

@@ -2,16 +2,15 @@ PROJECT(hash_playlist)
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.4)
 
+if(CMAKE_COMPILER_IS_GNUCC)
+	set(USER_C_FLAGS "-Os -Wunused -Wall -Werror")
+    set(CMAKE_C_FLAGS "${USER_C_FLAGS} ${CMAKE_C_FLAGS}")
+    message(STATUS "optional : ${USER_C_FLAGS}")   
+endif(CMAKE_COMPILER_IS_GNUCC)
+
 # 头文件目录
 INCLUDE_DIRECTORIES(
   ${PROJECT_SOURCE_DIR}/inc
-  /usr/include
-)
-
-# 链接库目录
-LINK_DIRECTORIES(
-  /usr/local/lib
-  /use/lib
 )
 
 SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
