@@ -224,6 +224,9 @@ next_node:
 	playlist_header.playlist[playlist_no].next_offset = s_node.next_offset;
 	playlist_header.playlist[playlist_no].prev_offset = s_node.prev_offset;
 
+	playlist_header.playlist[playlist_no].saved_offset = offset;    // 保存当前播放列表播放进度
+	playlist_header.saved_offset_for_all = offset;                  // 保存所有播放列表中最新的播放进度
+
 	if (0 == strcmp(s_music.path, "")) {
 		goto next_node;
 	}
