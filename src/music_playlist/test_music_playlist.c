@@ -39,47 +39,47 @@ void build_story_favorite_playlist() {
 	init_story_playlist_hash_engine();
 
 	// 3. 初始化播放列表
-	get_playlist_header(&header_data_value);
+	get_story_playlist_header(&header_data_value);
 	header_data_value.playlist_cnt = STORY_SLOT_CNT;
-	set_playlist_header(&header_data_value);
+	set_story_playlist_header(&header_data_value);
 
 	for (int i = 0; i < sizeof(playlist_1) / sizeof(char*); i++) {
-		add_music(playlist_1[i][0], playlist_1[i]);
+		add_story_music(playlist_1[i][0], playlist_1[i]);
 	}
 
 	printf("-- 歌曲更新前 ---------------------------------------\n");
-	show_playlist();
+	show_story_playlist();
 	printf("-----------------------------------------------------\n");
 
 	/** START 标准的添加音乐步骤 ***************/
 
 	// 3.1. 将所有歌曲默认标记为待删除
-	reset_playlist(0);
+	reset_story_playlist(0);
 
 	// 3.2. 添加云端json串下发的歌曲，并将json串中的标记为已下载
 	for (int i = 0; i < sizeof(playlist_2) / sizeof(char*); i++) {
-		add_music(playlist_2[i][0], playlist_2[i]);
+		add_story_music(playlist_2[i][0], playlist_2[i]);
 	}
 
 	// 3.3. 清理列表中不存在的歌曲
-	clean_playlist(0);
+	clean_story_playlist(0);
 
 	/** END 标准添加音乐步骤*****************/
 
 	printf("-- 歌曲更新后 ---------------------------------------\n");
-	show_playlist();
+	show_story_playlist();
 	printf("-----------------------------------------------------\n");
 
-	get_playlist_header(&header_data_value);
+	get_story_playlist_header(&header_data_value);
 
 	printf("-- %d\n", header_data_value.playlist[0].music_cnt);
 	for (int j = 0; j < header_data_value.playlist[0].music_cnt; j++) {
-		get_next_music(0);
+		get_story_next_music(0);
 	}
 	printf("-------------\n");
 
 	for (int j = 0; j < header_data_value.playlist[0].music_cnt; j++) {
-		get_prev_music(0);
+		get_story_prev_music(0);
 	}
 	printf("---------------------------------------\n");
 }

@@ -63,25 +63,25 @@ typedef struct {
 } hash_header_t;
 
 // 获取哈希属性
-int get_hash_header(char* path, hash_header_data_t* output, int (*cb)(hash_header_data_t*, hash_header_data_t*));
+int get_hash_header(const char* path, hash_header_data_t* output, int (*cb)(hash_header_data_t*, hash_header_data_t*));
 
 // 设置哈希属性
-int set_hash_header(char* path, hash_header_data_t* output, int (*cb)(hash_header_data_t*, hash_header_data_t*));
+int set_hash_header(const char* path, hash_header_data_t* output, int (*cb)(hash_header_data_t*, hash_header_data_t*));
 
 // 获取节点信息
-off_t get_node(char* path, get_node_method_t method, uint32_t hash_key, off_t offset, file_node_t* output, int (*cb)(file_node_t*, file_node_t*));
+off_t get_node(const char* path, get_node_method_t method, uint32_t hash_key, off_t offset, file_node_t* output, int (*cb)(file_node_t*, file_node_t*));
 
 // 添加节点
-int add_node(char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t*));
+int add_node(const char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t*));
 
 // 删除节点
-int del_node(char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t*));
+int del_node(const char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t*));
 
 // 遍历节点
-uint8_t traverse_nodes(char* path, traverse_type_t traverse_type, uint32_t hash_key, print_t print, node_data_t* input, traverse_action_t (*cb)(file_node_t*, node_data_t*));
+uint8_t traverse_nodes(const char* path, traverse_type_t traverse_type, uint32_t hash_key, print_t print, node_data_t* input, traverse_action_t (*cb)(file_node_t*, node_data_t*));
 
 // 初始化哈希引擎，告知所需信息
-int init_hash_engine(char* path, init_method_t rebuild, int hash_slot_cnt, int node_data_value_size, int hash_header_data_value_size);
+int init_hash_engine(const char* path, init_method_t rebuild, int hash_slot_cnt, int node_data_value_size, int hash_header_data_value_size);
 
 
 #endif

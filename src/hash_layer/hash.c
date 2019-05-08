@@ -80,7 +80,7 @@ exit:
 #define write(fd, buf, count)	happy_write(__func__, fd, buf, count)
 #define read(fd, buf, count)	happy_read(__func__, fd, buf, count)
 
-int get_hash_header(char* path, hash_header_data_t* output, int (*cb)(hash_header_data_t*, hash_header_data_t*)) {
+int get_hash_header(const char* path, hash_header_data_t* output, int (*cb)(hash_header_data_t*, hash_header_data_t*)) {
 	int fd = 0;
 	int ret = -1;
 	hash_header_t hash_header;
@@ -139,7 +139,7 @@ exit:
 
 }
 
-int set_hash_header(char* path, hash_header_data_t* input, int (*cb)(hash_header_data_t*, hash_header_data_t*)) {
+int set_hash_header(const char* path, hash_header_data_t* input, int (*cb)(hash_header_data_t*, hash_header_data_t*)) {
 	int fd = 0;
 	int ret = -1;
 	hash_header_t hash_header;
@@ -205,7 +205,7 @@ exit:
 }
 
 // 获取指定哈希值或指定偏移量的节点，返回下一个节点偏移量
-off_t get_node(char* path, get_node_method_t method, uint32_t hash_key, off_t offset, file_node_t* output, int (*cb)(file_node_t*, file_node_t*)) {
+off_t get_node(const char* path, get_node_method_t method, uint32_t hash_key, off_t offset, file_node_t* output, int (*cb)(file_node_t*, file_node_t*)) {
 	int ret = -1;
 	int fd = 0;
 	uint32_t group = 0;
@@ -290,7 +290,7 @@ exit:
 	return ret;
 }
 
-int add_node(char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t*)) {
+int add_node(const char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t*)) {
 	int ret = -1;
 	int fd = 0;
 	uint32_t group = 0;
@@ -472,7 +472,7 @@ exit:
 	return ret;	
 }
 
-int del_node(char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t*)) {
+int del_node(const char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t*)) {
 	int ret = -1;
 	int fd = 0;
 	uint32_t group = 0;
@@ -568,7 +568,7 @@ exit:
 }
 
 // traverse_type 为 TRAVERSE_ALL 时，hash_key可随意填写
-uint8_t traverse_nodes(char* path, traverse_type_t traverse_type, uint32_t hash_key, print_t print, node_data_t* input, traverse_action_t (*cb)(file_node_t*, node_data_t*)) {
+uint8_t traverse_nodes(const char* path, traverse_type_t traverse_type, uint32_t hash_key, print_t print, node_data_t* input, traverse_action_t (*cb)(file_node_t*, node_data_t*)) {
 	traverse_action_t action = TRAVERSE_ACTION_DO_NOTHING;
 	uint8_t i = 0;
 	int fd = 0;
@@ -692,7 +692,7 @@ exit:
 	return break_or_not;
 }
 
-int init_hash_engine(char* path, init_method_t rebuild,
+int init_hash_engine(const char* path, init_method_t rebuild,
 		int hash_slot_cnt, int node_data_value_size, int hash_header_data_value_size) {
 	int ret = -1;
 	int fd = 0;
