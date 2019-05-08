@@ -1,4 +1,4 @@
-PROJECT(hash_playlist)
+PROJECT(file_hash)
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.4)
 
@@ -11,6 +11,9 @@ endif(CMAKE_COMPILER_IS_GNUCC)
 # 头文件目录
 INCLUDE_DIRECTORIES(
   ${PROJECT_SOURCE_DIR}/inc
+  ${PROJECT_SOURCE_DIR}/inc/hash_layer
+  ${PROJECT_SOURCE_DIR}/inc/alarm_tone_list
+  ${PROJECT_SOURCE_DIR}/inc/music_playlist
 )
 
 SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)

@@ -38,7 +38,7 @@ typedef struct {
 typedef struct {
 	action_t delete_or_not;		// 判断歌曲是否删除
 	char path[MAX_MUSIC_PATH_LEN];
-} music_t;
+} music_value_t;
 
 typedef enum {
 	NEXT_MUSIC,
