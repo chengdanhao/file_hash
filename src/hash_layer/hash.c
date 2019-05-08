@@ -37,10 +37,6 @@
 #define hash_error(fmt, ...)
 #endif
 
-static int s_hash_slot_cnt;
-static int s_hash_value_size;
-static int s_hash_header_data_size;
-
 ssize_t happy_write(const char* f, int fd, void *buf, size_t count) {
 	int ret = -1;
 	ssize_t n_w = 0;
@@ -84,25 +80,19 @@ exit:
 #define write(fd, buf, count)	happy_write(__func__, fd, buf, count)
 #define read(fd, buf, count)	happy_read(__func__, fd, buf, count)
 
-int get_hash_header(char* path, hash_header_t* output, int (*cb)(hash_header_t*, hash_header_t*)) {
+int get_hash_header(char* path, hash_header_data_t* output, int (*cb)(hash_header_data_t*, hash_header_data_t*)) {
 	int fd = 0;
 	int ret = -1;
-	off_t curr_offset = 0;
 	hash_header_t hash_header;
-	void* header_content = NULL;
-
-	if (s_hash_header_data_size > 0
-			&& NULL == (header_content = (void*)calloc(1, s_hash_header_data_size))) {
-		hash_error("calloc failed.");
-		goto exit;
-	}
+	void* header_data_value = NULL;
+	uint32_t hash_header_data_value_size = 0;
 
 	if ((fd = open(path, O_RDONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0) {
 		hash_error("create file %s fail : %s.", path, strerror(errno));
 		goto exit;
 	}
 
-	if ((curr_offset = lseek(fd, 0, SEEK_CUR)) < 0) {
+	/*if ((curr_offset = lseek(fd, 0, SEEK_CUR)) < 0) {
 		hash_error("seek to %ld fail : %s.", curr_offset, strerror(errno));
 		goto close_file;
 	}
@@ -110,59 +100,73 @@ int get_hash_header(char* path, hash_header_t* output, int (*cb)(hash_header_t*,
 	if (lseek(fd, 0, SEEK_SET) < 0) {
 		hash_error("seek to head fail : %s.", strerror(errno));
 		goto close_file;
-	}
+	}*/
 
 	if (read(fd, &hash_header, sizeof(hash_header_t)) < 0) {
 		hash_error("read hash_header error : %s.", strerror(errno));
 		goto close_file;
 	}
 
-	if (s_hash_header_data_size > 0
-			&& read(fd, header_content, s_hash_header_data_size) < 0) {
-		hash_error("read hash_header_content error : %s.", strerror(errno));
-		goto close_file;
+	hash_header_data_value_size = hash_header.hash_header_data_value_size;
+
+	if (hash_header_data_value_size > 0) {
+		if (NULL == (header_data_value = (void*)calloc(1, hash_header_data_value_size))) {
+			hash_error("calloc failed.");
+			goto exit;
+		}
+
+		if (read(fd, header_data_value, hash_header_data_value_size) < 0) {
+			hash_error("read hash_header_content error : %s.", strerror(errno));
+			goto close_file;
+		}
 	}
 
-	hash_header.data = header_content;
+	hash_header.data.value = header_data_value;
 
-	cb(&hash_header, output);
+	cb(&(hash_header.data), output);
 
-	if (lseek(fd, curr_offset, SEEK_SET) < 0) {
+	/*if (lseek(fd, curr_offset, SEEK_SET) < 0) {
 		hash_error("seek back to %ld fail : %s.", curr_offset, strerror(errno));
 		goto close_file;
-	}
+	}*/
 
 close_file:
 	close(fd);
 
 exit:
-	safe_free(header_content);
+	safe_free(header_data_value);
 	return ret;
 
 }
 
-int set_hash_header(char* path, hash_header_t* input, int (*cb)(hash_header_t*, hash_header_t*)) {
+int set_hash_header(char* path, hash_header_data_t* input, int (*cb)(hash_header_data_t*, hash_header_data_t*)) {
 	int fd = 0;
 	int ret = -1;
-	off_t curr_offset = 0;
 	hash_header_t hash_header;
-	void *header_content = NULL;
+	uint32_t hash_header_data_value_size = 0;
+	void *header_data_value = NULL;
 
 	memset(&hash_header, 0, sizeof(hash_header_t));
 
-	if (s_hash_header_data_size > 0
-			&& NULL == (header_content = (void*)calloc(1, s_hash_header_data_size))) {
-		hash_error("calloc failed.");
-		goto exit;
+	if (read(fd, &hash_header, sizeof(hash_header_t)) < 0) {
+		hash_error("read hash_header error : %s.", strerror(errno));
+		goto close_file;
 	}
+
+	hash_header_data_value_size = hash_header.hash_header_data_value_size;
 
 	if ((fd = open(path, O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0) {
 		hash_error("open file %s fail : %s.", path, strerror(errno));
 		goto exit;
 	}
 
-	if ((curr_offset = lseek(fd, 0, SEEK_CUR)) < 0) {
+	/*if ((curr_offset = lseek(fd, 0, SEEK_CUR)) < 0) {
 		hash_error("seek to %ld fail : %s.", curr_offset, strerror(errno));
+		goto close_file;
+	}*/
+
+	if (read(fd, &hash_header, sizeof(hash_header_t)) < 0) {
+		hash_error("read hash_header error : %s.", strerror(errno));
 		goto close_file;
 	}
 
@@ -171,116 +175,37 @@ int set_hash_header(char* path, hash_header_t* input, int (*cb)(hash_header_t*, 
 		goto close_file;
 	}
 
-	hash_header.data = header_content;
+	if (hash_header_data_value_size > 0
+			&& NULL == (header_data_value = (void*)calloc(1, hash_header_data_value_size))) {
+		hash_error("calloc failed.");
+		goto exit;
+	}
 
-	cb(&hash_header, input);
+	hash_header.data.value = header_data_value;
+
+	cb(&(hash_header.data), input);
 
 	if (write(fd, &hash_header, sizeof(hash_header_t)) < 0) {
 		hash_error("write hash_header error : %s.", strerror(errno));
 		goto close_file;
 	}
 
-	if (s_hash_header_data_size > 0
-			&& write(fd, hash_header.data, s_hash_header_data_size) < 0) {
-		hash_error("write header_content error : %s.", strerror(errno));
+	if (hash_header_data_value_size > 0
+			&& write(fd, hash_header.data.value, hash_header_data_value_size) < 0) {
+		hash_error("write hash_header.data.value error : %s.", strerror(errno));
 		goto close_file;
 	}
 
-	if (lseek(fd, curr_offset, SEEK_SET) < 0) {
+	/*if (lseek(fd, curr_offset, SEEK_SET) < 0) {
 		hash_error("seek back to %ld fail : %s.", curr_offset, strerror(errno));
 		goto close_file;
-	}
+	}*/
 
 close_file:
 	close(fd);
 
 exit:
-	safe_free(header_content);
-	return ret;
-}
-
-int _build_hash_file(const char* f, char* path, uint8_t rebuild) {
-	int ret = -1;
-	int fd = 0;
-	uint32_t i = 0;
-	uint8_t file_exist = 0;
-	hash_header_t hash_header;
-	void* header_content = NULL;
-	file_node_t node;
-	void* hash_value = NULL;
-	off_t offset = 0;
-
-	memset(&hash_header, 0, sizeof(hash_header_t));
-	memset(&node, 0, sizeof(file_node_t));
-
-	if (access(path, F_OK) < 0) {
-		hash_debug("(%s calls) %s not exist.", f, path);
-		file_exist = 0;
-	} else {
-		file_exist = 1;
-	}
-
-	if (1 == file_exist && 1 == rebuild) {
-		if (unlink(path) < 0) {
-			hash_error("(%s calls) delete '%s' error : %s.", f, path, strerror(errno));
-			goto exit;
-		} else {
-			hash_info("(%s calls) delete old hash file '%s' success.", f, path);
-			file_exist = 0;
-		}
-	}
-
-	if (0 == file_exist) {
-		if ((fd = open(path, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0) {
-			hash_error("(%s calls) create file %s fail : %s.", f, path, strerror(errno));
-			goto exit;
-		}
-
-		if (s_hash_header_data_size > 0
-				&& NULL == (header_content = (void*)calloc(1, s_hash_header_data_size))) {
-			hash_error("calloc failed.");
-			goto exit;
-		}
-
-		if (write(fd, &hash_header, sizeof(hash_header_t)) < 0) {
-			hash_error("(%s calls) write hash_header error : %s.", f, strerror(errno));
-			goto close_file;
-		}
-
-		if (s_hash_header_data_size > 0
-				&& write(fd, header_content, s_hash_header_data_size) < 0) {
-			hash_error("(%s calls) write hash_header error : %s.", f, strerror(errno));
-			goto close_file;
-		}
-
-		if (NULL == (hash_value = (void*)calloc(1, s_hash_value_size))) {
-			hash_error("(%s calls) calloc failed.", f);
-			goto close_file;
-		}
-
-		for (i = 0; i < s_hash_slot_cnt; i++) {
-			offset = (sizeof(hash_header_t) + s_hash_header_data_size) + i * (sizeof(file_node_t) + s_hash_value_size);
-			node.prev_offset = node.next_offset = offset;
-			if (write(fd, &node, sizeof(file_node_t)) < 0) {
-				hash_error("(%s calls) init node error : %s.", f, strerror(errno));
-				goto close_file;
-			}
-
-			if (write(fd, hash_value, s_hash_value_size) < 0) {
-				hash_error("(%s calls) init hash_value error : %s.", f, strerror(errno));
-				goto close_file;
-			}
-		}
-	}
-
-	ret = 0;
-
-close_file:
-	close(fd);
-
-exit:
-	safe_free(header_content);
-	safe_free(hash_value);
+	safe_free(header_data_value);
 	return ret;
 }
 
@@ -290,24 +215,39 @@ off_t get_node(char* path, get_node_method_t method, uint32_t hash_key, off_t of
 	int fd = 0;
 	uint32_t group = 0;
 	off_t curr_offset = 0;
+	hash_header_t hash_header;
 	file_node_t node;
 	void* hash_value = NULL;
+	uint32_t hash_slot_cnt = 0;
+	uint32_t hash_header_data_value_size = 0;
+	uint32_t node_data_value_size = 0;
 
+	memset(&hash_header, 0, sizeof(hash_header_t));
 	memset(&node, 0, sizeof(file_node_t));
-
-	if (method == GET_NODE_BY_HASH_KEY) {
-		group = hash_key % s_hash_slot_cnt;
-		offset = (sizeof(hash_header_t) + s_hash_header_data_size)\
-			+ group * (sizeof(file_node_t) + s_hash_value_size);
-	}
-
-	if (NULL == (hash_value = (void*)calloc(1, s_hash_value_size))) {
-		hash_error("calloc failed.");
-		goto exit;
-	}
 
 	if ((fd = open(path, O_RDONLY)) < 0) {
 		hash_error("open file %s fail : %s.", path, strerror(errno));
+		goto exit;
+	}
+
+	// 先读取头部的哈希信息
+	if (read(fd, &hash_header, sizeof(hash_header_t)) < 0) {
+		hash_error("read hash_header error : %s.", strerror(errno));
+		goto close_file;
+	}
+
+	hash_slot_cnt = hash_header.hash_slot_cnt;
+	hash_header_data_value_size = hash_header.hash_header_data_value_size;
+	node_data_value_size = hash_header.node_data_value_size;
+
+	if (method == GET_NODE_BY_HASH_KEY) {
+		group = hash_key % hash_slot_cnt;
+		offset = (sizeof(hash_header_t) + hash_header_data_value_size)\
+			+ group * (sizeof(file_node_t) + node_data_value_size);
+	}
+
+	if (NULL == (hash_value = (void*)calloc(1, node_data_value_size))) {
+		hash_error("calloc failed.");
 		goto exit;
 	}
 
@@ -328,7 +268,7 @@ off_t get_node(char* path, get_node_method_t method, uint32_t hash_key, off_t of
 		goto close_file;
 	}
 
-	if (read(fd, hash_value, s_hash_value_size) < 0) {
+	if (read(fd, hash_value, node_data_value_size) < 0) {
 		hash_error("read hash_value failed : %s.", strerror(errno));
 		goto close_file;
 	}
@@ -362,22 +302,37 @@ int add_node(char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t
 	off_t new_node_offset = 0;
 	off_t offset = 0;
 	off_t first_node_offset = 0;
+	hash_header_t hash_header;
 	file_node_t node;
-	void* hash_value = NULL;
+	void* node_data_value = NULL;
+	uint32_t hash_slot_cnt = 0;
+	uint32_t hash_header_data_value_size = 0;
+	uint32_t node_data_value_size = 0;
 
+	memset(&hash_header, 0, sizeof(hash_header_t));
 	memset(&node, 0, sizeof(file_node_t));
-
-	group = input->key % s_hash_slot_cnt;
-	offset = first_node_offset = (sizeof(hash_header_t) + s_hash_header_data_size)\
-		+ group * (sizeof(file_node_t) + s_hash_value_size);
-
-	if (NULL == (hash_value = (void*)calloc(1, s_hash_value_size))) {
-		hash_error("calloc failed.");
-		goto exit;
-	}
 
 	if ((fd = open(path, O_RDWR)) < 0) {
 		hash_error("open file %s fail : %s.", path, strerror(errno));
+		goto exit;
+	}
+
+	// 先读取头部的哈希信息
+	if (read(fd, &hash_header, sizeof(hash_header_t)) < 0) {
+		hash_error("read hash_header error : %s.", strerror(errno));
+		goto close_file;
+	}
+
+	hash_slot_cnt = hash_header.hash_slot_cnt;
+	hash_header_data_value_size = hash_header.hash_header_data_value_size;
+	node_data_value_size = hash_header.node_data_value_size;
+
+	group = input->key % hash_slot_cnt;
+	offset = first_node_offset = (sizeof(hash_header_t) + hash_header_data_value_size)\
+		+ group * (sizeof(file_node_t) + node_data_value_size);
+
+	if (NULL == (node_data_value = (void*)calloc(1, node_data_value_size))) {
+		hash_error("calloc failed.");
 		goto exit;
 	}
 
@@ -393,13 +348,13 @@ int add_node(char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t
 			goto close_file;
 		}
 
-		if (read(fd, hash_value, s_hash_value_size) < 0) {
-			hash_error("read hash_value failed : %s.", strerror(errno));
+		if (read(fd, node_data_value, node_data_value_size) < 0) {
+			hash_error("read node_data_value failed : %s.", strerror(errno));
 			goto close_file;
 		}
 
 		// 建立关联，方便后面使用。之后不要破坏这种关联（比如read调用）
-		node.data.value = hash_value;
+		node.data.value = node_data_value;
 
 		if (lseek(fd, offset, SEEK_SET) < 0) {
 			hash_error("seek back to %ld fail : %s.", offset, strerror(errno));
@@ -500,8 +455,8 @@ int add_node(char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t
 				goto close_file;
 			}
 
-			if (write(fd, node.data.value, s_hash_value_size) < 0) {
-				hash_error("write hash_value error : %s.", strerror(errno));
+			if (write(fd, node.data.value, node_data_value_size) < 0) {
+				hash_error("write node_data_value error : %s.", strerror(errno));
 				goto close_file;
 			}
 			/**** 4. END 写入新节点的其他信息 ****/
@@ -518,7 +473,7 @@ close_file:
 	close(fd);
 
 exit:
-	safe_free(hash_value);
+	safe_free(node_data_value);
 	return ret;	
 }
 
@@ -528,26 +483,36 @@ int del_node(char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t
 	uint32_t group = 0;
 	off_t offset = 0;
 	off_t first_node_offset = 0;
+	hash_header_t hash_header;
 	file_node_t node;
-	void* hash_value = NULL;
+	void* node_data_value = NULL;
+	uint32_t hash_slot_cnt = 0;
+	uint32_t hash_header_data_value_size = 0;
+	uint32_t node_data_value_size = 0;
 
+	memset(&hash_header, 0, sizeof(hash_header_t));
 	memset(&node, 0, sizeof(file_node_t));
-
-	if (access(path, F_OK) < 0) {
-		hash_debug("%s not exist.", path);
-		goto exit;
-	}
-
-	group = input->key % s_hash_slot_cnt;
-	offset = first_node_offset = (sizeof(hash_header_t) + s_hash_header_data_size)\
-		+ group * (sizeof(file_node_t) + s_hash_value_size);
 
 	if ((fd = open(path, O_RDWR)) < 0) {
 		hash_error("open file %s fail : %s.", path, strerror(errno));
 		goto exit;
 	}
 
-	if (NULL == (hash_value = (void*)calloc(1, s_hash_value_size))) {
+	// 先读取头部的哈希信息
+	if (read(fd, &hash_header, sizeof(hash_header_t)) < 0) {
+		hash_error("read hash_header error : %s.", strerror(errno));
+		goto close_file;
+	}
+
+	hash_slot_cnt = hash_header.hash_slot_cnt;
+	hash_header_data_value_size = hash_header.hash_header_data_value_size;
+	node_data_value_size = hash_header.node_data_value_size;
+
+	group = input->key % hash_slot_cnt;
+	offset = first_node_offset = (sizeof(hash_header_t) + hash_header_data_value_size)\
+		+ group * (sizeof(file_node_t) + node_data_value_size);
+
+	if (NULL == (node_data_value = (void*)calloc(1, node_data_value_size))) {
 		hash_error("calloc failed.");
 		goto exit;
 	}
@@ -563,13 +528,13 @@ int del_node(char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t
 			goto close_file;
 		}
 
-		if (read(fd, hash_value, s_hash_value_size) < 0) {
-			hash_error("read hash_value failed : %s.", strerror(errno));
+		if (read(fd, node_data_value, node_data_value_size) < 0) {
+			hash_error("read node_data_value failed : %s.", strerror(errno));
 			goto close_file;
 		}
 
 		// 建立关联，方便后面使用。之后不要破坏这种关联（比如read调用）
-		node.data.value = hash_value;
+		node.data.value = node_data_value;
 
 		// 比较的同时，清空node.data中的相关数据
 		if (0 == cb(&(node.data), input)) {
@@ -586,8 +551,8 @@ int del_node(char* path, node_data_t* input, int (*cb)(node_data_t*, node_data_t
 				goto close_file;
 			}
 
-			if (write(fd, node.data.value, s_hash_value_size) < 0) {
-				hash_error("del hash_value error : %s.", strerror(errno));
+			if (write(fd, node.data.value, node_data_value_size) < 0) {
+				hash_error("del node_data_value error : %s.", strerror(errno));
 				goto close_file;
 			}
 
@@ -603,7 +568,7 @@ close_file:
 	close(fd);
 
 exit:
-	safe_free(hash_value);
+	safe_free(node_data_value);
 	return ret;
 }
 
@@ -614,11 +579,16 @@ uint8_t traverse_nodes(char* path, traverse_type_t traverse_type, uint32_t hash_
 	int fd = 0;
 	off_t offset = 0;
 	off_t first_node_offset = 0;
+	hash_header_t hash_header;
 	file_node_t node;
-	void* hash_value = NULL;
+	void* node_data_value = NULL;
+	uint32_t hash_slot_cnt = 0;
+	uint32_t hash_header_data_value_size = 0;
+	uint32_t node_data_value_size = 0;
 	uint8_t break_or_not = 0;
 	static uint8_t s_first_node = 1;
 
+	memset(&hash_header, 0, sizeof(hash_header_t));
 	memset(&node, 0, sizeof(file_node_t));
 
 	if ((fd = open(path, O_RDWR)) < 0) {
@@ -626,20 +596,30 @@ uint8_t traverse_nodes(char* path, traverse_type_t traverse_type, uint32_t hash_
 		goto exit;
 	}
 
-	if (NULL == (hash_value = (void*)calloc(1, s_hash_value_size))) {
+	// 先读取头部的哈希信息
+	if (read(fd, &hash_header, sizeof(hash_header_t)) < 0) {
+		hash_error("read hash_header error : %s.", strerror(errno));
+		goto close_file;
+	}
+
+	hash_slot_cnt = hash_header.hash_slot_cnt;
+	hash_header_data_value_size = hash_header.hash_header_data_value_size;
+	node_data_value_size = hash_header.node_data_value_size;
+
+	if (NULL == (node_data_value = (void*)calloc(1, node_data_value_size))) {
 		hash_error("calloc failed.");
 		goto exit;
 	}
 
-	for (i = 0; i < s_hash_slot_cnt; i++) {
+	for (i = 0; i < hash_slot_cnt; i++) {
 
 		// TODO: hash_key和i的关系不一定可以直接比较，后续版本需要完善
-		if (TRAVERSE_SPECIFIC_HASH_KEY == traverse_type && i != (hash_key % s_hash_slot_cnt)) {
+		if (TRAVERSE_SPECIFIC_HASH_KEY == traverse_type && i != (hash_key % hash_slot_cnt)) {
 			continue;
 		}
 
-		offset = first_node_offset = (sizeof(hash_header_t) + s_hash_header_data_size)\
-			+ i * (sizeof(file_node_t) + s_hash_value_size);
+		offset = first_node_offset = (sizeof(hash_header_t) + hash_header_data_value_size)\
+			+ i * (sizeof(file_node_t) + node_data_value_size);
 
 		s_first_node = 1;
 		if (lseek(fd, first_node_offset, SEEK_SET) < 0) {
@@ -660,12 +640,12 @@ uint8_t traverse_nodes(char* path, traverse_type_t traverse_type, uint32_t hash_
 				goto close_file;
 			}
 
-			if (read(fd, hash_value, s_hash_value_size) < 0) {
-				hash_error("read hash_value failed : %s.", strerror(errno));
+			if (read(fd, node_data_value, node_data_value_size) < 0) {
+				hash_error("read node_data_value failed : %s.", strerror(errno));
 				goto close_file;
 			}
 
-			node.data.value = hash_value;
+			node.data.value = node_data_value;
 
 			if (s_first_node) {
 				s_first_node = 0;
@@ -692,8 +672,8 @@ uint8_t traverse_nodes(char* path, traverse_type_t traverse_type, uint32_t hash_
 					goto close_file;
 				}
 
-				if (write(fd, node.data.value, s_hash_value_size) < 0) {
-					hash_error("del hash_value error : %s.", strerror(errno));
+				if (write(fd, node.data.value, node_data_value_size) < 0) {
+					hash_error("del node_data_value error : %s.", strerror(errno));
 					goto close_file;
 				}
 			}
@@ -713,14 +693,105 @@ close_file:
 	close(fd);
 
 exit:
-	safe_free(hash_value);
+	safe_free(node_data_value);
 	return break_or_not;
 }
 
-void init_hash_engine(int hash_slot_cnt, int hash_value_size, int hash_header_size) {
-	s_hash_slot_cnt = hash_slot_cnt;
-	s_hash_value_size = hash_value_size;
-	s_hash_header_data_size = hash_header_size;
-	hash_info("hash_slot_cnt = %d, hash_value_size = %d, hash_header_size = %d.",
-		hash_slot_cnt, hash_value_size, hash_header_size);
+int init_hash_engine(char* path, init_method_t rebuild,
+		int hash_slot_cnt, int node_data_value_size, int hash_header_data_value_size) {
+	int ret = -1;
+	int fd = 0;
+	uint32_t i = 0;
+	uint8_t file_exist = 0;
+	hash_header_t hash_header;
+	void* header_data_value = NULL;
+	file_node_t node;
+	void* node_data_value = NULL;
+	off_t offset = 0;
+
+	hash_info("path = %s, rebuild = %d,"
+		"hash_slot_cnt = %d, node_data_value_size = %d, hash_header_data_value_size = %d.",
+		path, rebuild, hash_slot_cnt, node_data_value_size, hash_header_data_value_size);
+
+	memset(&hash_header, 0, sizeof(hash_header_t));
+	memset(&node, 0, sizeof(file_node_t));
+
+	if (access(path, F_OK) < 0) {
+		hash_debug("%s not exist.", path);
+		file_exist = 0;
+	} else {
+		file_exist = 1;
+	}
+
+	if (1 == file_exist && 1 == rebuild) {
+		if (unlink(path) < 0) {
+			hash_error("delete '%s' error : %s.", path, strerror(errno));
+			goto exit;
+		} else {
+			hash_info("delete old hash file '%s' success.", path);
+			file_exist = 0;
+		}
+	}
+
+	if (0 == file_exist) {
+		if ((fd = open(path, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0) {
+			hash_error("create file %s fail : %s.", path, strerror(errno));
+			goto exit;
+		}
+
+		// 先写入头部信息
+		if (hash_header_data_value_size > 0
+				&& NULL == (header_data_value = (void*)calloc(1, hash_header_data_value_size))) {
+			hash_error("calloc failed.");
+			goto exit;
+		}
+
+		hash_header.hash_slot_cnt = hash_slot_cnt;
+		hash_header.hash_header_data_value_size = hash_header_data_value_size;
+		hash_header.node_data_value_size = node_data_value_size;
+		hash_header.data.value = header_data_value;
+
+		if (write(fd, &hash_header, sizeof(hash_header_t)) < 0) {
+			hash_error("write hash_header error : %s.", strerror(errno));
+			goto close_file;
+		}
+
+		if (hash_header_data_value_size > 0
+				&& write(fd, hash_header.data.value, hash_header_data_value_size) < 0) {
+			hash_error("write hash_header.data.value error : %s.", strerror(errno));
+			goto close_file;
+		}
+
+		if (NULL == (node_data_value = (void*)calloc(1, node_data_value_size))) {
+			hash_error("calloc failed.");
+			goto close_file;
+		}
+
+		node.data.value = node_data_value;
+
+		for (i = 0; i < hash_slot_cnt; i++) {
+			offset = (sizeof(hash_header_t) + hash_header_data_value_size) + i * (sizeof(file_node_t) + node_data_value_size);
+			node.prev_offset = node.next_offset = offset;
+
+			if (write(fd, &node, sizeof(file_node_t)) < 0) {
+				hash_error("init node error : %s.", strerror(errno));
+				goto close_file;
+			}
+
+			if (write(fd, node.data.value, node_data_value_size) < 0) {
+				hash_error("init node.data.value error : %s.", strerror(errno));
+				goto close_file;
+			}
+		}
+	}
+
+	ret = 0;
+
+close_file:
+	close(fd);
+
+exit:
+	safe_free(header_data_value);
+	safe_free(node_data_value);
+	return ret;
 }

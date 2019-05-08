@@ -31,11 +31,7 @@ void build_alarm_tone_list() {
 	char tone_path[MAX_ALARM_TONE_PATH_LEN] = {0};
 
 	// 1. 初始化哈希引擎，不需要哈希头部，所以写0
-	init_hash_engine(ALARM_TONE_LIST_SLOT_CNT, sizeof(alarm_tone_value_t), 0);
-
-	// 2. 检查播放列表是否存在
-	// check_alarm_tone_playlist();	// 正式使用时使用改api
-	rebuild_alarm_tone_list();		// 调试时使用
+	init_hash_engine(ALARM_TONE_LIST_PATH, FORCE_INIT, ALARM_TONE_LIST_SLOT_CNT, sizeof(alarm_tone_value_t), 0);
 
 	// 3. 初始化播放列表
 	for (int i = 0; i < sizeof(playlist_add_1) / sizeof(playlist_add_1[0]); i++) {

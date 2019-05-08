@@ -20,8 +20,6 @@ int find_alarm_tone(uint32_t hash_key, uint32_t time_stamp, char* alarm_tone_pat
 int add_alarm_tone(uint32_t hash_key, uint32_t time_stamp, char* alarm_tone_path);
 int del_alarm_tone(uint32_t hash_key, uint32_t time_stamp);
 void show_alarm_tone_list();
-void check_alarm_tone_list();
-void rebuild_alarm_tone_list();
 
 #endif
 

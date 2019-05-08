@@ -161,11 +161,3 @@ exit:
 void show_alarm_tone_list() {
 	traverse_nodes(ALARM_TONE_LIST_PATH, TRAVERSE_ALL, 0, WITH_PRINT, NULL, _print_alarm_tone_node_cb);
 }
-
-void check_alarm_tone_list() {
-	check_hash_file(ALARM_TONE_LIST_PATH);
-}
-
-void rebuild_alarm_tone_list() {
-	rebuild_hash_file(ALARM_TONE_LIST_PATH);
-}

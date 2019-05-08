@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "music_node.h"
-
+#if 0
 #define MUSIC_INFO 1
 #define MUSIC_DBUG 1
 #define MUSIC_WARN 1
@@ -362,4 +362,4 @@ void check_playlist() {
 void rebuild_playlist() {
 	rebuild_hash_file(PLAYLIST_PATH);
 }
-
+#endif

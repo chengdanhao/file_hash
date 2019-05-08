@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "music_node.h"
-
+#if 0
 #define STORY_SLOT_CNT 1
 void build_story_favorite_playlist() {
 	const char* playlist_1[] = {
@@ -318,3 +318,4 @@ int test_music_playlist_main() {
 
 	return 0;
 }
+#endif
