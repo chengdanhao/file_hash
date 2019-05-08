@@ -54,7 +54,7 @@ int __set_playlist_cb(hash_header_data_t* file, hash_header_data_t* input) {
 	return 0;
 }
 
-int _get_music_cb(file_node_t* node, file_node_t* output) {
+int _get_music_cb(hash_node_t* node, hash_node_t* output) {
 	output->prev_offset = node->prev_offset;
 	output->next_offset = node->next_offset;
 	memcpy(output->data.value, node->data.value, sizeof(music_data_value_t));
@@ -62,14 +62,14 @@ int _get_music_cb(file_node_t* node, file_node_t* output) {
 	return 0;
 }
 
-int _add_music_cb(node_data_t* file, node_data_t* input) {
+int _add_music_cb(hash_node_data_t* file, hash_node_data_t* input) {
 	file->key = input->key;
 	memcpy(file->value, input->value, sizeof(music_data_value_t));
 
 	return 0;
 }
 
-int _del_music_cb(node_data_t* file, node_data_t* input) {
+int _del_music_cb(hash_node_data_t* file, hash_node_data_t* input) {
 	int ret = -1;
 	music_data_value_t* file_music = (music_data_value_t*)(file->value);
 	music_data_value_t* input_music = (music_data_value_t*)(input->value);
@@ -84,7 +84,7 @@ int _del_music_cb(node_data_t* file, node_data_t* input) {
 	return ret;
 }
 
-traverse_action_t _print_music_cb(file_node_t* node, node_data_t* input) {
+traverse_action_t _print_music_cb(hash_node_t* node, hash_node_data_t* input) {
 	music_data_value_t* music = (music_data_value_t*)(node->data.value);
 
 	if (node->used) {
@@ -100,7 +100,7 @@ traverse_action_t _print_music_cb(file_node_t* node, node_data_t* input) {
 	return TRAVERSE_ACTION_DO_NOTHING;
 }
 
-traverse_action_t _reset_playlist_cb(file_node_t* node, node_data_t* input) {
+traverse_action_t _reset_playlist_cb(hash_node_t* node, hash_node_data_t* input) {
 	music_data_value_t* file_music = (music_data_value_t*)(node->data.value);
 
 	if (node->used) {
@@ -110,7 +110,7 @@ traverse_action_t _reset_playlist_cb(file_node_t* node, node_data_t* input) {
 	return TRAVERSE_ACTION_UPDATE;
 }
 
-traverse_action_t _clean_playlist_cb(file_node_t* node, node_data_t* input) {
+traverse_action_t _clean_playlist_cb(hash_node_t* node, hash_node_data_t* input) {
 	music_data_value_t* file_music = (music_data_value_t*)(node->data.value);
 
 	if (node->used && MUSIC_DELETE == file_music->delete_or_not) {
@@ -124,7 +124,7 @@ traverse_action_t _clean_playlist_cb(file_node_t* node, node_data_t* input) {
 }
 
 // 如果找到，返回1
-traverse_action_t _find_music_cb(file_node_t* node, node_data_t* input) {
+traverse_action_t _find_music_cb(hash_node_t* node, hash_node_data_t* input) {
 	int action = TRAVERSE_ACTION_DO_NOTHING;
 	music_data_value_t* file_music = (music_data_value_t*)(node->data.value);
 	music_data_value_t* input_music = (music_data_value_t*)(input->value);
@@ -137,60 +137,62 @@ traverse_action_t _find_music_cb(file_node_t* node, node_data_t* input) {
 	return action;
 }
 
-void _get_playlist_header(const char* func, const int line, const char* playlist_path, playlist_header_data_value_t* playlist_header) {
+void _get_playlist_header(const char* func, const int line, const char* playlist_path,
+		playlist_header_data_value_t* playlist_header) {
 	hash_header_data_t hash_header;
 
 	memset(&hash_header, 0, sizeof(hash_header_data_t));
 
 	hash_header.value = playlist_header;
 
-	get_hash_header(playlist_path, &hash_header, __get_playlist_cb);
+	get_header(playlist_path, &hash_header, __get_playlist_cb);
 
 #if 0
 	printf("-------------------------- \e[7;32m<GET> %s : %d\e[0m --------------------------\n"
-		"which_playlist_to_handle = %d, playlist_cnt = %d.\n",
-		func, line,
-		playlist_header->which_playlist_to_handle, playlist_header->playlist_cnt);
+			"which_playlist_to_handle = %d, playlist_cnt = %d.\n",
+			func, line,
+			playlist_header->which_playlist_to_handle, playlist_header->playlist_cnt);
 
 	for (int i = 0; i < playlist_header->playlist_cnt; i++) {
 		printf("[%d] total_music = %d, prev = 0x%lX, next = 0x%lX, playlist_name = %s.\n", i,
-			playlist_header->playlist[i].music_cnt,
-			playlist_header->playlist[i].prev_offset,
-			playlist_header->playlist[i].next_offset,
-			playlist_header->playlist[i].name);
+				playlist_header->playlist[i].music_cnt,
+				playlist_header->playlist[i].prev_offset,
+				playlist_header->playlist[i].next_offset,
+				playlist_header->playlist[i].name);
 	}
 
 	printf("---------------------------------------"
-		"---------------------------------------\n");
+			"---------------------------------------\n");
 #endif
 }
 
-void _set_playlist_header(const char* func, const int line, const char* playlist_path, playlist_header_data_value_t* playlist_header) {
+void _set_playlist_header(const char* func, const int line, const char* playlist_path,
+		playlist_header_data_value_t* playlist_header) {
 	hash_header_data_t hash_header;
 
 #if 0
 	printf("-------------------------- \e[7;33m<SET> %s : %d\e[0m --------------------------\n"
-		"which_playlist_to_handle = %d, playlist_cnt = %d\n",
-		func, line,
-		playlist_header->which_playlist_to_handle, playlist_header->playlist_cnt);
+			"which_playlist_to_handle = %d, playlist_cnt = %d\n",
+			func, line,
+			playlist_header->which_playlist_to_handle, playlist_header->playlist_cnt);
 
 	for (int i = 0; i < playlist_header->playlist_cnt; i++) {
 		printf("[%d] total_music = %d, prev = 0x%lX, next = 0x%lX, playlist_name = %s.\n", i,
-			playlist_header->playlist[i].music_cnt,
-			playlist_header->playlist[i].prev_offset,
-			playlist_header->playlist[i].next_offset,
-			playlist_header->playlist[i].name);
+				playlist_header->playlist[i].music_cnt,
+				playlist_header->playlist[i].prev_offset,
+				playlist_header->playlist[i].next_offset,
+				playlist_header->playlist[i].name);
 	}
 
 	printf("---------------------------------------"
-		"---------------------------------------\n");
+			"---------------------------------------\n");
 #endif
 
 	memset(&hash_header, 0, sizeof(hash_header_data_t));
 
 	hash_header.value = playlist_header;
 
-	set_hash_header(playlist_path, &hash_header, __set_playlist_cb);
+	set_header(playlist_path, &hash_header, __set_playlist_cb);
 }
 
 void get_music(const char* playlist_path, uint32_t hash_key, direction_t next_or_prev) {
@@ -201,7 +203,7 @@ void get_music(const char* playlist_path, uint32_t hash_key, direction_t next_or
 	uint32_t total_music_cnt = 0;
 	get_node_method_t method = GET_NODE_BY_HASH_KEY;
 	music_data_value_t music;
-	file_node_t node = { .data = { .value = &music } };
+	hash_node_t node = { .data = { .value = &music } };
 
 	memset(&playlist_header, 0, sizeof(playlist_header));
 
@@ -216,7 +218,9 @@ void get_music(const char* playlist_path, uint32_t hash_key, direction_t next_or
 	}
 
 next_node:
-	offset = NEXT_MUSIC == next_or_prev ? playlist_header.playlist[playlist_no].next_offset : playlist_header.playlist[playlist_no].prev_offset;
+	offset = NEXT_MUSIC == next_or_prev ? \
+		playlist_header.playlist[playlist_no].next_offset : \
+		playlist_header.playlist[playlist_no].prev_offset;
 	method = offset > 0 ? GET_NODE_BY_OFFSET : GET_NODE_BY_HASH_KEY;
 
 	get_node(playlist_path, method, hash_key, offset, &node, _get_music_cb);
@@ -248,7 +252,7 @@ void get_next_music(const char* playlist_path, uint32_t hash_key) {
 }
 
 uint8_t find_music(const char* playlist_path, uint32_t hash_key, const char* music_path) {
-	node_data_t data;
+	hash_node_data_t data;
 	music_data_value_t music;
 
 	memset(&data, 0, sizeof(data));
@@ -259,12 +263,13 @@ uint8_t find_music(const char* playlist_path, uint32_t hash_key, const char* mus
 	data.key = hash_key;
 	data.value = &music;
 
-	return traverse_nodes(playlist_path, TRAVERSE_SPECIFIC_HASH_KEY, hash_key, WITHOUT_PRINT, &data, _find_music_cb);
+	return traverse_nodes(playlist_path, TRAVERSE_SPECIFIC_HASH_KEY, hash_key,
+		WITHOUT_PRINT, &data, _find_music_cb);
 }
 
 int add_music(const char* playlist_path, uint32_t hash_key, const char* music_path) {
 	int ret = -1;
-	node_data_t data;
+	hash_node_data_t data;
 	music_data_value_t music;
 	playlist_header_data_value_t playlist_header;
 	uint32_t playlist_no = 0;
@@ -305,7 +310,7 @@ exit:
 
 int del_music(const char* playlist_path, uint32_t hash_key, const char* music_path) {
 	int ret = -1;
-	node_data_t data;
+	hash_node_data_t data;
 	music_data_value_t music;
 	playlist_header_data_value_t playlist_header;
 	uint32_t playlist_no = 0;
@@ -348,14 +353,16 @@ void reset_playlist(const char* playlist_path, uint32_t hash_key) {
 	playlist_header.playlist[playlist_no].music_cnt = 0;
 	_set_playlist_header(__func__, __LINE__, playlist_path,&playlist_header);
 
-	traverse_nodes(playlist_path, TRAVERSE_SPECIFIC_HASH_KEY, hash_key, WITHOUT_PRINT, NULL, _reset_playlist_cb);
+	traverse_nodes(playlist_path, TRAVERSE_SPECIFIC_HASH_KEY, hash_key,
+		WITHOUT_PRINT, NULL, _reset_playlist_cb);
 }
 
 void clean_playlist(const char* playlist_path, uint32_t hash_key) {
-	traverse_nodes(playlist_path, TRAVERSE_SPECIFIC_HASH_KEY, hash_key, WITHOUT_PRINT, NULL, _clean_playlist_cb);
+	traverse_nodes(playlist_path, TRAVERSE_SPECIFIC_HASH_KEY, hash_key,
+			WITHOUT_PRINT, NULL, _clean_playlist_cb);
 }
 
 int init_playlist_hash_engine(const char* playlist_path, uint32_t slot_cnt) {
-	return init_hash_engine(playlist_path, FORCE_INIT,
-		slot_cnt, sizeof(music_data_value_t), sizeof(playlist_header_data_value_t));
+	return init_hash_engine(playlist_path, FORCE_INIT,
+			slot_cnt, sizeof(music_data_value_t), sizeof(playlist_header_data_value_t));
 }
