@@ -91,7 +91,8 @@ int get_hash_header(char* path, hash_header_t* output, int (*cb)(hash_header_t*,
 	hash_header_t hash_header;
 	void* header_content = NULL;
 
-	if (NULL == (header_content = (void*)calloc(1, s_hash_header_data_size))) {
+	if (s_hash_header_data_size > 0
+			&& NULL == (header_content = (void*)calloc(1, s_hash_header_data_size))) {
 		hash_error("calloc failed.");
 		goto exit;
 	}
@@ -116,7 +117,8 @@ int get_hash_header(char* path, hash_header_t* output, int (*cb)(hash_header_t*,
 		goto close_file;
 	}
 
-	if (read(fd, header_content, s_hash_header_data_size) < 0) {
+	if (s_hash_header_data_size > 0
+			&& read(fd, header_content, s_hash_header_data_size) < 0) {
 		hash_error("read hash_header_content error : %s.", strerror(errno));
 		goto close_file;
 	}
@@ -148,7 +150,8 @@ int set_hash_header(char* path, hash_header_t* input, int (*cb)(hash_header_t*, 
 
 	memset(&hash_header, 0, sizeof(hash_header_t));
 
-	if (NULL == (header_content = (void*)calloc(1, s_hash_header_data_size))) {
+	if (s_hash_header_data_size > 0
+			&& NULL == (header_content = (void*)calloc(1, s_hash_header_data_size))) {
 		hash_error("calloc failed.");
 		goto exit;
 	}
@@ -177,7 +180,8 @@ int set_hash_header(char* path, hash_header_t* input, int (*cb)(hash_header_t*, 
 		goto close_file;
 	}
 
-	if (write(fd, hash_header.data, s_hash_header_data_size) < 0) {
+	if (s_hash_header_data_size > 0
+			&& write(fd, hash_header.data, s_hash_header_data_size) < 0) {
 		hash_error("write header_content error : %s.", strerror(errno));
 		goto close_file;
 	}
@@ -232,7 +236,8 @@ int _build_hash_file(const char* f, char* path, uint8_t rebuild) {
 			goto exit;
 		}
 
-		if (NULL == (header_content = (void*)calloc(1, s_hash_header_data_size))) {
+		if (s_hash_header_data_size > 0
+				&& NULL == (header_content = (void*)calloc(1, s_hash_header_data_size))) {
 			hash_error("calloc failed.");
 			goto exit;
 		}
@@ -242,7 +247,8 @@ int _build_hash_file(const char* f, char* path, uint8_t rebuild) {
 			goto close_file;
 		}
 
-		if (write(fd, header_content, s_hash_header_data_size) < 0) {
+		if (s_hash_header_data_size > 0
+				&& write(fd, header_content, s_hash_header_data_size) < 0) {
 			hash_error("(%s calls) write hash_header error : %s.", f, strerror(errno));
 			goto close_file;
 		}
