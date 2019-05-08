@@ -212,11 +212,11 @@ void build_album_favorite_playlist() {
 	}
 	clean_album_playlist(hash_key);
 
-	//reset_playlist(hash_key);
+	//_reset_playlist(hash_key);
 	for (int i = 0; i < sizeof(playlist_list_0_del_1) / sizeof(char*); i++) {
 		del_album_music(hash_key, playlist_list_0_del_1[i]);
 	}
-	//clean_playlist(hash_key);
+	//_clean_playlist(hash_key);
 
 	reset_album_playlist(hash_key);
 	for (int i = 0; i < sizeof(playlist_list_0_add_2) / sizeof(char*); i++) {
