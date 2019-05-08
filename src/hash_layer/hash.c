@@ -92,16 +92,6 @@ int get_hash_header(const char* path, hash_header_data_t* output, int (*cb)(hash
 		goto exit;
 	}
 
-	/*if ((curr_offset = lseek(fd, 0, SEEK_CUR)) < 0) {
-		hash_error("seek to %ld fail : %s.", curr_offset, strerror(errno));
-		goto close_file;
-	}
-
-	if (lseek(fd, 0, SEEK_SET) < 0) {
-		hash_error("seek to head fail : %s.", strerror(errno));
-		goto close_file;
-	}*/
-
 	if (read(fd, &hash_header, sizeof(hash_header_t)) < 0) {
 		hash_error("read hash_header error : %s.", strerror(errno));
 		goto close_file;
@@ -125,11 +115,6 @@ int get_hash_header(const char* path, hash_header_data_t* output, int (*cb)(hash
 
 	cb(&(hash_header.data), output);
 
-	/*if (lseek(fd, curr_offset, SEEK_SET) < 0) {
-		hash_error("seek back to %ld fail : %s.", curr_offset, strerror(errno));
-		goto close_file;
-	}*/
-
 close_file:
 	close(fd);
 
@@ -152,11 +137,6 @@ int set_hash_header(const char* path, hash_header_data_t* input, int (*cb)(hash_
 		hash_error("open file %s fail : %s.", path, strerror(errno));
 		goto exit;
 	}
-
-	/*if ((curr_offset = lseek(fd, 0, SEEK_CUR)) < 0) {
-		hash_error("seek to %ld fail : %s.", curr_offset, strerror(errno));
-		goto close_file;
-	}*/
 
 	if (read(fd, &hash_header, sizeof(hash_header_t)) < 0) {
 		hash_error("read hash_header error : %s.", strerror(errno));
@@ -190,11 +170,6 @@ int set_hash_header(const char* path, hash_header_data_t* input, int (*cb)(hash_
 		hash_error("write hash_header.data.value error : %s.", strerror(errno));
 		goto close_file;
 	}
-
-	/*if (lseek(fd, curr_offset, SEEK_SET) < 0) {
-		hash_error("seek back to %ld fail : %s.", curr_offset, strerror(errno));
-		goto close_file;
-	}*/
 
 close_file:
 	close(fd);
