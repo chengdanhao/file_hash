@@ -1,8 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "music_node.h"
-#if 0
-#define STORY_SLOT_CNT 1
+
 void build_story_favorite_playlist() {
 	const char* playlist_1[] = {
 		"AAA",
@@ -32,21 +31,17 @@ void build_story_favorite_playlist() {
 		"ZZZ new",
 	};
 
-	playlist_header_t header;
+	playlist_header_data_value_t header_data_value;
 
-	memset(&header, 0, sizeof(header));
+	memset(&header_data_value, 0, sizeof(header_data_value));
 
 	// 1. 初始化哈希引擎
-	init_hash_engine(STORY_SLOT_CNT, sizeof(music_value_t), sizeof(playlist_header_t));
-
-	// 2. 检查播放列表是否存在
-	// check_playlist();	// 正式使用时使用改api
-	rebuild_playlist();		// 调试时使用
+	init_story_playlist_hash_engine();
 
 	// 3. 初始化播放列表
-	get_playlist_header(&header);
-	header.playlist_cnt = STORY_SLOT_CNT;
-	set_playlist_header(&header);
+	get_playlist_header(&header_data_value);
+	header_data_value.playlist_cnt = STORY_SLOT_CNT;
+	set_playlist_header(&header_data_value);
 
 	for (int i = 0; i < sizeof(playlist_1) / sizeof(char*); i++) {
 		add_music(playlist_1[i][0], playlist_1[i]);
@@ -75,36 +70,36 @@ void build_story_favorite_playlist() {
 	show_playlist();
 	printf("-----------------------------------------------------\n");
 
-	get_playlist_header(&header);
+	get_playlist_header(&header_data_value);
 
-	printf("-- %d\n", header.playlist[0].music_cnt);
-	for (int j = 0; j < header.playlist[0].music_cnt; j++) {
-		get_prev_music(0);
+	printf("-- %d\n", header_data_value.playlist[0].music_cnt);
+	for (int j = 0; j < header_data_value.playlist[0].music_cnt; j++) {
+		get_next_music(0);
 	}
 	printf("-------------\n");
 
-	for (int j = 0; j < header.playlist[0].music_cnt; j++) {
-		get_next_music(0);
+	for (int j = 0; j < header_data_value.playlist[0].music_cnt; j++) {
+		get_prev_music(0);
 	}
 	printf("---------------------------------------\n");
 }
-
+#if 0
 uint32_t find_playlist_hash_slot(const char* playlist_name) {
 	uint32_t playlist_no = 0;
 	uint32_t playlist_cnt;
 	uint32_t hash_key = 0;
-	playlist_header_t header;
+	playlist_header_data_value_t header_data_value;
 	uint8_t do_find_playlist = 0;
 
-	memset(&header, 0, sizeof(header));
+	memset(&header_data_value, 0, sizeof(header_data_value));
 
-	get_playlist_header(&header);
+	get_playlist_header(&header_data_value);
 
-	playlist_no = header.which_playlist_to_handle;
-	playlist_cnt = header.playlist_cnt;
+	playlist_no = header_data_value.which_playlist_to_handle;
+	playlist_cnt = header_data_value.playlist_cnt;
 
 	for (int i = 0; i < playlist_cnt; i++) {
-		if (0 == strcmp(header.playlist[i].name, playlist_name)) {
+		if (0 == strcmp(header_data_value.playlist[i].name, playlist_name)) {
 			hash_key = i;
 			do_find_playlist = 1;
 			break;
@@ -112,16 +107,15 @@ uint32_t find_playlist_hash_slot(const char* playlist_name) {
 	}
 
 	if (0 == do_find_playlist) {
-		strncpy(header.playlist[playlist_no].name, playlist_name, MAX_PLAYLIST_NAME_LEN);
+		strncpy(header_data_value.playlist[playlist_no].name, playlist_name, MAX_PLAYLIST_NAME_LEN);
 		hash_key = playlist_no;
-		header.which_playlist_to_handle = (playlist_no + 1) % playlist_cnt;
-		set_playlist_header(&header);
+		header_data_value.which_playlist_to_handle = (playlist_no + 1) % playlist_cnt;
+		set_playlist_header(&header_data_value);
 	}
 
 	return hash_key;
 }
 
-#define ALBUM_SLOT_CNT MAX_PLAYLIST_CNT
 void build_album_favorite_playlist() {
 	const char* playlist_name_0 = "channel000";
 	const char* playlist_list_0_add_1[] = {
@@ -197,21 +191,17 @@ void build_album_favorite_playlist() {
 
 	uint32_t hash_key = 0;
 
-	playlist_header_t header;
+	playlist_header_data_value_t header_data_value;
 
-	memset(&header, 0, sizeof(header));
+	memset(&header_data_value, 0, sizeof(header_data_value));
 
 	// 1. 初始化哈希引擎
-	init_hash_engine(ALBUM_SLOT_CNT, sizeof(music_value_t), sizeof(playlist_header_t));
-
-	// 2. 检查播放列表是否存在
-	// check_playlist();	// 正式使用时使用改api
-	rebuild_playlist();		// 调试时使用
+	init_album_playlist_hash_engine();
 
 	// 3. 初始化播放列表
-	get_playlist_header(&header);
-	header.playlist_cnt = ALBUM_SLOT_CNT;
-	set_playlist_header(&header);
+	get_playlist_header(&header_data_value);
+	header_data_value.playlist_cnt = ALBUM_SLOT_CNT;
+	set_playlist_header(&header_data_value);
 
 	/** START 添加三个专辑的歌曲 ***************/
 	// 第一个专辑增和删
@@ -295,27 +285,26 @@ void build_album_favorite_playlist() {
 	show_playlist();
 	printf("---------------------------------------------------------\n");
 
-	get_playlist_header(&header);
+	get_playlist_header(&header_data_value);
 
-	for (int i = 0; i < header.playlist_cnt; i++) {
-		printf("-- [%d] = %d\n", i, header.playlist[i].music_cnt);
-		for (int j = 0; j < header.playlist[i].music_cnt; j++) {
+	for (int i = 0; i < header_data_value.playlist_cnt; i++) {
+		printf("-- [%d] = %d\n", i, header_data_value.playlist[i].music_cnt);
+		for (int j = 0; j < header_data_value.playlist[i].music_cnt; j++) {
 			get_next_music(i);
 		}
 
 		printf("-------------\n");
 
-		for (int j = 0; j < header.playlist[i].music_cnt; j++) {
+		for (int j = 0; j < header_data_value.playlist[i].music_cnt; j++) {
 			get_prev_music(i);
 		}
 		printf("---------------------------------------\n");
 	}
 }
-
+#endif
 int test_music_playlist_main() {
 	build_story_favorite_playlist();
-	build_album_favorite_playlist();
+	//build_album_favorite_playlist();
 
 	return 0;
 }
-#endif

@@ -148,13 +148,6 @@ int set_hash_header(char* path, hash_header_data_t* input, int (*cb)(hash_header
 
 	memset(&hash_header, 0, sizeof(hash_header_t));
 
-	if (read(fd, &hash_header, sizeof(hash_header_t)) < 0) {
-		hash_error("read hash_header error : %s.", strerror(errno));
-		goto close_file;
-	}
-
-	hash_header_data_value_size = hash_header.hash_header_data_value_size;
-
 	if ((fd = open(path, O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0) {
 		hash_error("open file %s fail : %s.", path, strerror(errno));
 		goto exit;
@@ -170,6 +163,8 @@ int set_hash_header(char* path, hash_header_data_t* input, int (*cb)(hash_header
 		goto close_file;
 	}
 
+	hash_header_data_value_size = hash_header.hash_header_data_value_size;
+
 	if (lseek(fd, 0, SEEK_SET) < 0) {
 		hash_error("seek to head fail : %s.", strerror(errno));
 		goto close_file;
@@ -181,7 +176,7 @@ int set_hash_header(char* path, hash_header_data_t* input, int (*cb)(hash_header
 		goto exit;
 	}
 
-	hash_header.data.value = header_data_value;
+	hash_header.data.value = header_data_value;	
 
 	cb(&(hash_header.data), input);
 

@@ -1,14 +1,18 @@
-#ifndef __NODE_H__
-#define __NODE_H__
+#ifndef __MUSIC_NODE_H__
+#define __MUSIC_NODE_H__
 
 #include <stdint.h>
 #include "hash.h"
 
-#define PLAYLIST_PATH "playlist"
-
 #define MAX_MUSIC_PATH_LEN 200
 #define MAX_PLAYLIST_NAME_LEN 20
 #define MAX_PLAYLIST_CNT 3
+
+#define PLAYLIST_PATH "story_playlist"
+#define ALBUM_PLAYLIST_PATH "album_playlist"
+
+#define STORY_SLOT_CNT 1
+#define ALBUM_SLOT_CNT MAX_PLAYLIST_CNT
 
 /*
  * 后续只需要修改这个头文件就可以自定义节点数据，底层代码不用修改
@@ -33,12 +37,12 @@ typedef struct {
 	off_t saved_offset_for_all;
 	uint32_t which_playlist_to_handle;
 	playlist_t playlist[MAX_PLAYLIST_CNT];
-} playlist_header_t;
+} playlist_header_data_value_t;
 
 typedef struct {
 	action_t delete_or_not;		// 判断歌曲是否删除
 	char path[MAX_MUSIC_PATH_LEN];
-} music_value_t;
+} music_data_value_t;
 
 typedef enum {
 	NEXT_MUSIC,
@@ -62,16 +66,15 @@ void clean_playlist(uint32_t hash_key);
 void reset_playlist(uint32_t hash_key);
 /********************/
 
-void _get_playlist_header(const char* func, const int line, playlist_header_t* playlist_header);
-void _set_playlist_header(const char* func, const int line, playlist_header_t* playlist_header);
+void _get_playlist_header(const char* func, const int line, playlist_header_data_value_t* playlist_header);
+void _set_playlist_header(const char* func, const int line, playlist_header_data_value_t* playlist_header);
 // 获取播放列表属性，该属性存放在hash_header_t中
 #define get_playlist_header(playlist_header) _get_playlist_header(__func__, __LINE__, playlist_header)
 
 // 设置播放列表属性，该属性存放在hash_header_t中
 #define set_playlist_header(playlist_header) _set_playlist_header(__func__, __LINE__, playlist_header)
 
-// 创建/重建播放列表
-void check_playlist();
-void rebuild_playlist();
+int init_story_playlist_hash_engine();
+//int init_album_playlist_hash_engine();
 
 #endif

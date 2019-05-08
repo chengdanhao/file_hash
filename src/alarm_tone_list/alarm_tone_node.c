@@ -161,3 +161,8 @@ exit:
 void show_alarm_tone_list() {
 	traverse_nodes(ALARM_TONE_LIST_PATH, TRAVERSE_ALL, 0, WITH_PRINT, NULL, _print_alarm_tone_node_cb);
 }
+
+int init_alarm_tone_hash_engine() {
+	return init_hash_engine(ALARM_TONE_LIST_PATH, FORCE_INIT,
+		ALARM_TONE_LIST_SLOT_CNT,sizeof(alarm_tone_value_t), 0);
+}
