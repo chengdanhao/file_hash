@@ -21,12 +21,12 @@ typedef enum {
 // 遍历所有节点，还是指定哈希槽的节点
 typedef enum {
 	TRAVERSE_ALL,
-	TRAVERSE_SPECIFIC_HASH_KEY,
+	TRAVERSE_SPECIFIC_HASH_SLOT,
 } traverse_type_t;
 
 // 获取节点的方式，通过哈希值取得“首节点”还是通过偏移量直接定位
 typedef enum {
-	GET_NODE_BY_HASH_KEY,
+	GET_NODE_BY_HASH_SLOT,
 	GET_NODE_BY_OFFSET,
 } get_node_method_t;
 
@@ -74,7 +74,7 @@ int set_header(const char* path, hash_header_data_t* iutput_heade_data,
 int get_node(const char* path, get_node_method_t method, uint32_t hash_key,
 		off_t offset, hash_node_t* output_node, int (*cb)(hash_node_t*, hash_node_t*));
 
-int set_node(const char* path, uint32_t hash_key,
+int set_node(const char* path, get_node_method_t method, uint32_t hash_key,
 		off_t offset, hash_node_t* input_node, int (*cb)(hash_node_t*, hash_node_t*));
 
 // 添加节点

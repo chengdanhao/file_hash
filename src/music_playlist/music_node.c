@@ -33,23 +33,23 @@
 #endif
 
 int __get_playlist_cb(hash_header_data_t* file_header_data, hash_header_data_t* output_header_data) {
-	playlist_header_data_value_t* file_playlist_header_data = (playlist_header_data_value_t*)(file_header_data->value);
-	playlist_header_data_value_t* output_playlist_header_data = (playlist_header_data_value_t*)(output_header_data->value);
+	playlist_header_data_value_t* file_playlist_header_data_value = (playlist_header_data_value_t*)(file_header_data->value);
+	playlist_header_data_value_t* output_playlist_header_data_value = (playlist_header_data_value_t*)(output_header_data->value);
 
-	output_playlist_header_data->which_playlist_to_handle = file_playlist_header_data->which_playlist_to_handle;
-	output_playlist_header_data->playlist_cnt = file_playlist_header_data->playlist_cnt;
-	memcpy(output_playlist_header_data->playlist, file_playlist_header_data->playlist, sizeof(output_playlist_header_data->playlist));
+	output_playlist_header_data_value->which_playlist_to_handle = file_playlist_header_data_value->which_playlist_to_handle;
+	output_playlist_header_data_value->playlist_cnt = file_playlist_header_data_value->playlist_cnt;
+	memcpy(output_playlist_header_data_value->playlist, file_playlist_header_data_value->playlist, sizeof(output_playlist_header_data_value->playlist));
 
 	return 0;
 }
 
 int __set_playlist_cb(hash_header_data_t* file_header_data, hash_header_data_t* input_header_data) {
-	playlist_header_data_value_t* file_playlist_header_data = (playlist_header_data_value_t*)(file_header_data->value);
-	playlist_header_data_value_t* input_playlist_header_data = (playlist_header_data_value_t*)(input_header_data->value);
+	playlist_header_data_value_t* file_playlist_header_data_value = (playlist_header_data_value_t*)(file_header_data->value);
+	playlist_header_data_value_t* input_playlist_header_data_value = (playlist_header_data_value_t*)(input_header_data->value);
 
-	file_playlist_header_data->which_playlist_to_handle = input_playlist_header_data->which_playlist_to_handle;
-	file_playlist_header_data->playlist_cnt = input_playlist_header_data->playlist_cnt;
-	memcpy(file_playlist_header_data->playlist, input_playlist_header_data->playlist, sizeof(input_playlist_header_data->playlist));
+	file_playlist_header_data_value->which_playlist_to_handle = input_playlist_header_data_value->which_playlist_to_handle;
+	file_playlist_header_data_value->playlist_cnt = input_playlist_header_data_value->playlist_cnt;
+	memcpy(file_playlist_header_data_value->playlist, input_playlist_header_data_value->playlist, sizeof(input_playlist_header_data_value->playlist));
 
 	return 0;
 }
@@ -203,7 +203,7 @@ void _get_music(const char* playlist_path, uint32_t hash_key, direction_t next_o
 	uint32_t playlist_cnt = 0;
 	uint32_t playlist_no = 0;
 	uint32_t total_music_cnt = 0;
-	get_node_method_t method = GET_NODE_BY_HASH_KEY;
+	get_node_method_t method = GET_NODE_BY_HASH_SLOT;
 	music_data_value_t music_data_value;
 	hash_node_t node = { .data = { .value = &music_data_value } };
 
@@ -223,7 +223,7 @@ next_node:
 	offset = NEXT_MUSIC == next_or_prev ? \
 		playlist_header_data_value.playlist[playlist_no].next_offset : \
 		playlist_header_data_value.playlist[playlist_no].prev_offset;
-	method = offset > 0 ? GET_NODE_BY_OFFSET : GET_NODE_BY_HASH_KEY;
+	method = offset > 0 ? GET_NODE_BY_OFFSET : GET_NODE_BY_HASH_SLOT;
 
 	get_node(playlist_path, method, hash_key, offset, &node, __get_music_cb);
 
@@ -257,7 +257,7 @@ uint8_t _find_music(const char* playlist_path, uint32_t hash_key, const char* mu
 	node_data.key = hash_key;
 	node_data.value = &music_data_value;
 
-	return traverse_nodes(playlist_path, TRAVERSE_SPECIFIC_HASH_KEY, hash_key,
+	return traverse_nodes(playlist_path, TRAVERSE_SPECIFIC_HASH_SLOT, hash_key,
 		WITHOUT_PRINT, &node_data, __find_music_cb);
 }
 
@@ -347,12 +347,12 @@ void _reset_playlist(const char* playlist_path, uint32_t hash_key) {
 	playlist_header_data_value.playlist[playlist_no].music_cnt = 0;
 	_set_playlist_header(__func__, __LINE__, playlist_path,&playlist_header_data_value);
 
-	traverse_nodes(playlist_path, TRAVERSE_SPECIFIC_HASH_KEY, hash_key,
+	traverse_nodes(playlist_path, TRAVERSE_SPECIFIC_HASH_SLOT, hash_key,
 		WITHOUT_PRINT, NULL, __reset_playlist_cb);
 }
 
 void _clean_playlist(const char* playlist_path, uint32_t hash_key) {
-	traverse_nodes(playlist_path, TRAVERSE_SPECIFIC_HASH_KEY, hash_key,
+	traverse_nodes(playlist_path, TRAVERSE_SPECIFIC_HASH_SLOT, hash_key,
 			WITHOUT_PRINT, NULL, __clean_playlist_cb);
 }
 

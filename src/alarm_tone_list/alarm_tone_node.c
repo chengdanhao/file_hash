@@ -94,7 +94,7 @@ int find_alarm_tone(uint32_t key, uint32_t time_stamp, char* alarm_tone_path) {
 	node_data.value = &alarm_tone_data_value;
 
 	if ((ret = traverse_nodes(ALARM_TONE_LIST_PATH,
-					TRAVERSE_SPECIFIC_HASH_KEY,
+					TRAVERSE_SPECIFIC_HASH_SLOT,
 					key, WITHOUT_PRINT,
 					&node_data, _find_alarm_tone_cb)) > 0) {
 		strncpy(alarm_tone_path, alarm_tone_data_value.path, MAX_ALARM_TONE_PATH_LEN);

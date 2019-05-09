@@ -37,17 +37,17 @@
 #define hash_error(fmt, ...)
 #endif
 
-ssize_t happy_write(const char* f, int fd, void *buf, size_t count) {
+ssize_t happy_write(const char* func, const int line, int fd, void *buf, size_t count) {
 	int ret = -1;
 	ssize_t n_w = 0;
 
 	if ((n_w = write(fd, buf, count)) < 0) {
-		hash_error("(%s calls) write error.", f);
+		hash_error("(%s : %d calls) write error.", func, line);
 		goto exit;
 	}
 
 	if (n_w != count) {
-		hash_error("(%s calls) write incomplete.", f);
+		hash_error("(%s : %d calls) write incomplete.", func, line);
 		goto exit;
 	}
 
@@ -57,17 +57,17 @@ exit:
 	return ret;
 }
 
-ssize_t happy_read(const char* f, int fd, void *buf, size_t count) {
+ssize_t happy_read(const char* func, const int line, int fd, void *buf, size_t count) {
 	int ret = -1;
 	ssize_t n_r = 0;
 
 	if ((n_r = read(fd, buf, count)) < 0) {
-		hash_error("(%s calls) read error.", f);
+		hash_error("(%s : %d calls) read error.", func, line);
 		goto exit;
 	}
 
 	if (n_r < count) {
-		hash_error("(%s calls) read incomplete.", f);
+		hash_error("(%s : %d calls) read incomplete.", func, line);
 		goto exit;
 	}
 
@@ -77,8 +77,8 @@ exit:
 	return ret;
 }
 
-#define write(fd, buf, count)	happy_write(__func__, fd, buf, count)
-#define read(fd, buf, count)	happy_read(__func__, fd, buf, count)
+#define write(fd, buf, count)	happy_write(__func__, __LINE__, fd, buf, count)
+#define read(fd, buf, count)	happy_read(__func__, __LINE__, fd, buf, count)
 
 int get_header(const char* path, hash_header_data_t* output_header_data,
 		int (*cb)(hash_header_data_t*, hash_header_data_t*)) {
@@ -211,7 +211,7 @@ int get_node(const char* path, get_node_method_t method, uint32_t hash_key,
 	header_data_value_size = header.header_data_value_size;
 	node_data_value_size = header.node_data_value_size;
 
-	if (method == GET_NODE_BY_HASH_KEY) {
+	if (method == GET_NODE_BY_HASH_SLOT) {
 		group = hash_key % hash_slot_cnt;
 		offset = (sizeof(hash_header_t) + header_data_value_size)\
 			 + group * (sizeof(hash_node_t) + node_data_value_size);
@@ -254,19 +254,22 @@ exit:
 	return ret;
 }
 
-int set_node(const char* path, uint32_t hash_key,
+int set_node(const char* path, get_node_method_t method, uint32_t hash_key,
 		off_t offset, hash_node_t* input_node, int (*cb)(hash_node_t*, hash_node_t*)) {
 	int ret = -1;
 	int fd = 0;
 	hash_header_t header;
 	hash_node_t node;
 	void* node_data_value = NULL;
+	uint32_t group = 0;
+	uint32_t hash_slot_cnt = 0;
+	uint32_t header_data_value_size = 0;
 	uint32_t node_data_value_size = 0;
 
 	memset(&header, 0, sizeof(hash_header_t));
 	memset(&node, 0, sizeof(hash_node_t));
 
-	if ((fd = open(path, O_RDONLY)) < 0) {
+	if ((fd = open(path, O_RDWR)) < 0) {
 		hash_error("open file %s fail : %s.", path, strerror(errno));
 		goto exit;
 	}
@@ -275,6 +278,16 @@ int set_node(const char* path, uint32_t hash_key,
 	if (read(fd, &header, sizeof(hash_header_t)) < 0) {
 		hash_error("read header error : %s.", strerror(errno));
 		goto close_file;
+	}
+
+	hash_slot_cnt = header.hash_slot_cnt;
+	header_data_value_size = header.header_data_value_size;
+	node_data_value_size = header.node_data_value_size;
+
+	if (method == GET_NODE_BY_HASH_SLOT) {
+		group = hash_key % hash_slot_cnt;
+		offset = (sizeof(hash_header_t) + header_data_value_size)\
+			 + group * (sizeof(hash_node_t) + node_data_value_size);
 	}
 
 	node_data_value_size = header.node_data_value_size;
@@ -318,7 +331,7 @@ close_file:
 	close(fd);
 
 exit:
-	safe_free(node_data_value);
+	safe_free(node.data.value);
 	return ret;
 }
 
@@ -647,7 +660,7 @@ uint8_t traverse_nodes(const char* path, traverse_type_t traverse_type, uint32_t
 	for (i = 0; i < hash_slot_cnt; i++) {
 
 		// TODO: hash_key和i的关系不一定可以直接比较，后续版本需要完善
-		if (TRAVERSE_SPECIFIC_HASH_KEY == traverse_type && i != (hash_key % hash_slot_cnt)) {
+		if (TRAVERSE_SPECIFIC_HASH_SLOT == traverse_type && i != (hash_key % hash_slot_cnt)) {
 			continue;
 		}
 
