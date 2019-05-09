@@ -33,30 +33,24 @@
 #endif
 
 int __get_playlist_cb(hash_header_data_t* file_header_data, hash_header_data_t* output_header_data) {
-	playlist_header_data_value_t* file_playlist_header_data_value = (playlist_header_data_value_t*)(file_header_data->value);
-	playlist_header_data_value_t* output_playlist_header_data_value = (playlist_header_data_value_t*)(output_header_data->value);
-
-	output_playlist_header_data_value->which_playlist_to_handle = file_playlist_header_data_value->which_playlist_to_handle;
-	output_playlist_header_data_value->playlist_cnt = file_playlist_header_data_value->playlist_cnt;
-	memcpy(output_playlist_header_data_value->playlist, file_playlist_header_data_value->playlist, sizeof(output_playlist_header_data_value->playlist));
+	memcpy(output_header_data->value, file_header_data->value, sizeof(playlist_header_data_value_t));
 
 	return 0;
 }
 
 int __set_playlist_cb(hash_header_data_t* file_header_data, hash_header_data_t* input_header_data) {
-	playlist_header_data_value_t* file_playlist_header_data_value = (playlist_header_data_value_t*)(file_header_data->value);
-	playlist_header_data_value_t* input_playlist_header_data_value = (playlist_header_data_value_t*)(input_header_data->value);
-
-	file_playlist_header_data_value->which_playlist_to_handle = input_playlist_header_data_value->which_playlist_to_handle;
-	file_playlist_header_data_value->playlist_cnt = input_playlist_header_data_value->playlist_cnt;
-	memcpy(file_playlist_header_data_value->playlist, input_playlist_header_data_value->playlist, sizeof(input_playlist_header_data_value->playlist));
+	memcpy(file_header_data->value, input_header_data->value, sizeof(playlist_header_data_value_t));
 
 	return 0;
 }
 
 int __get_music_cb(hash_node_t* file_node, hash_node_t* output_node) {
-	output_node->prev_offset = file_node->prev_offset;
-	output_node->next_offset = file_node->next_offset;
+	void *addr = NULL;
+
+	addr = output_node->data.value;
+	memcpy(output_node, file_node, sizeof(hash_node_t));
+	output_node->data.value = addr;
+
 	memcpy(output_node->data.value, file_node->data.value, sizeof(music_data_value_t));
 
 	return 0;

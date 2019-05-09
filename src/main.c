@@ -6,7 +6,7 @@ int test_music_playlist_main();
 int test_tbd_list_main();
 
 int main() {
-	//test_alarm_tone_list_main();
-	//test_music_playlist_main();
+	test_alarm_tone_list_main();
+	test_music_playlist_main();
 	test_tbd_list_main();
 }
