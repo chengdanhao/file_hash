@@ -1,5 +1,5 @@
-#ifndef __BOOKCODE_HASH__
-#define __BOOKCODE_HASH__
+#ifndef __HASH_H__
+#define __HASH_H__
 
 #include <stdint.h>
 
@@ -63,28 +63,31 @@ typedef struct {
 } hash_header_t;
 
 // 获取哈希属性
-int get_header(const char* path, hash_header_data_t* output,
+int get_header(const char* path, hash_header_data_t* output_header_data,
 		int (*cb)(hash_header_data_t*, hash_header_data_t*));
 
 // 设置哈希属性
-int set_header(const char* path, hash_header_data_t* output,
+int set_header(const char* path, hash_header_data_t* iutput_heade_data,
 		int (*cb)(hash_header_data_t*, hash_header_data_t*));
 
 // 获取节点信息
-off_t get_node(const char* path, get_node_method_t method, uint32_t hash_key,
-		off_t offset, hash_node_t* output, int (*cb)(hash_node_t*, hash_node_t*));
+int get_node(const char* path, get_node_method_t method, uint32_t hash_key,
+		off_t offset, hash_node_t* output_node, int (*cb)(hash_node_t*, hash_node_t*));
+
+int set_node(const char* path, uint32_t hash_key,
+		off_t offset, hash_node_t* input_node, int (*cb)(hash_node_t*, hash_node_t*));
 
 // 添加节点
-int add_node(const char* path, hash_node_data_t* input,
+int add_node(const char* path, hash_node_data_t* input_node_data,
 		int (*cb)(hash_node_data_t*, hash_node_data_t*));
 
 // 删除节点
-int del_node(const char* path, hash_node_data_t* input,
+int del_node(const char* path, hash_node_data_t* input_node_data,
 		int (*cb)(hash_node_data_t*, hash_node_data_t*));
 
 // 遍历节点
 uint8_t traverse_nodes(const char* path, traverse_type_t traverse_type,
-		uint32_t hash_key, print_t print, hash_node_data_t* input,
+		uint32_t hash_key, print_t print, hash_node_data_t* input_node_data,
 		traverse_action_t (*cb)(hash_node_t*, hash_node_data_t*));
 
 // 初始化哈希引擎，告知所需信息

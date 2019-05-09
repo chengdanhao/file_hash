@@ -80,7 +80,7 @@ exit:
 #define write(fd, buf, count)	happy_write(__func__, fd, buf, count)
 #define read(fd, buf, count)	happy_read(__func__, fd, buf, count)
 
-int get_header(const char* path, hash_header_data_t* output,
+int get_header(const char* path, hash_header_data_t* output_header_data,
 		int (*cb)(hash_header_data_t*, hash_header_data_t*)) {
 	int fd = 0;
 	int ret = -1;
@@ -114,7 +114,7 @@ int get_header(const char* path, hash_header_data_t* output,
 
 	header.data.value = header_data_value;
 
-	cb(&(header.data), output);
+	cb(&(header.data), output_header_data);
 
 close_file:
 	close(fd);
@@ -125,7 +125,7 @@ exit:
 
 }
 
-int set_header(const char* path, hash_header_data_t* input,
+int set_header(const char* path, hash_header_data_t* input_header_data,
 		int (*cb)(hash_header_data_t*, hash_header_data_t*)) {
 	int fd = 0;
 	int ret = -1;
@@ -160,7 +160,7 @@ int set_header(const char* path, hash_header_data_t* input,
 
 	header.data.value = header_data_value;
 
-	cb(&(header.data), input);
+	cb(&(header.data), input_header_data);
 
 	if (write(fd, &header, sizeof(hash_header_t)) < 0) {
 		hash_error("write header error : %s.", strerror(errno));
@@ -181,13 +181,11 @@ exit:
 	return ret;
 }
 
-// 获取指定哈希值或指定偏移量的节点，返回下一个节点偏移量
-off_t get_node(const char* path, get_node_method_t method, uint32_t hash_key,
-		off_t offset, hash_node_t* output, int (*cb)(hash_node_t*, hash_node_t*)) {
+int get_node(const char* path, get_node_method_t method, uint32_t hash_key,
+		off_t offset, hash_node_t* output_node, int (*cb)(hash_node_t*, hash_node_t*)) {
 	int ret = -1;
 	int fd = 0;
 	uint32_t group = 0;
-	off_t curr_offset = 0;
 	hash_header_t header;
 	hash_node_t node;
 	void* node_data_value = NULL;
@@ -224,12 +222,6 @@ off_t get_node(const char* path, get_node_method_t method, uint32_t hash_key,
 		goto exit;
 	}
 
-	// 记录当前偏移量，后面会回退到该偏移量
-	if ((curr_offset = lseek(fd, 0, SEEK_CUR)) < 0) {
-		hash_error("seek to %ld fail : %s.", curr_offset, strerror(errno));
-		goto close_file;
-	}
-
 	// 定位到指定的偏移量处
 	if (lseek(fd, offset, SEEK_SET) < 0) {
 		hash_error("seek to %ld fail : %s.", offset, strerror(errno));
@@ -250,11 +242,73 @@ off_t get_node(const char* path, get_node_method_t method, uint32_t hash_key,
 	node.data.value = node_data_value;
 
 	// 在回调函数中可以返回上/下一首歌曲的偏移量
-	cb(&node, output);
+	cb(&node, output_node);
 
-	// 重新指向开始时的偏移量
-	if (lseek(fd, curr_offset, SEEK_SET) < 0) {
-		hash_error("seek back to %ld fail : %s.", curr_offset, strerror(errno));
+	ret = 0;
+
+close_file:
+	close(fd);
+
+exit:
+	safe_free(node_data_value);
+	return ret;
+}
+
+int set_node(const char* path, uint32_t hash_key,
+		off_t offset, hash_node_t* input_node, int (*cb)(hash_node_t*, hash_node_t*)) {
+	int ret = -1;
+	int fd = 0;
+	hash_header_t header;
+	hash_node_t node;
+	void* node_data_value = NULL;
+	uint32_t node_data_value_size = 0;
+
+	memset(&header, 0, sizeof(hash_header_t));
+	memset(&node, 0, sizeof(hash_node_t));
+
+	if ((fd = open(path, O_RDONLY)) < 0) {
+		hash_error("open file %s fail : %s.", path, strerror(errno));
+		goto exit;
+	}
+
+	// 先读取头部的哈希信息
+	if (read(fd, &header, sizeof(hash_header_t)) < 0) {
+		hash_error("read header error : %s.", strerror(errno));
+		goto close_file;
+	}
+
+	node_data_value_size = header.node_data_value_size;
+
+	if (NULL == (node_data_value = (void*)calloc(1, node_data_value_size))) {
+		hash_error("calloc failed.");
+		goto exit;
+	}
+
+	// 建立关联，方便后面使用。之后不要破坏这种关联（比如read调用）
+	node.data.value = node_data_value;
+
+	// 定位到指定的偏移量处
+	if (lseek(fd, offset, SEEK_SET) < 0) {
+		hash_error("seek to %ld fail : %s.", offset, strerror(errno));
+		goto close_file;
+	}
+
+	// 在回调函数中可以返回上/下一首歌曲的偏移量
+	cb(&node, input_node);
+
+	// 再次定位到节点起始位置
+	if (lseek(fd, offset, SEEK_SET) < 0) {
+		hash_error("seek back to %ld fail : %s.", offset, strerror(errno));
+		goto close_file;
+	}
+
+	if (write(fd, &node, sizeof(hash_node_t)) < 0) {
+		hash_error("write node error : %s.", strerror(errno));
+		goto close_file;
+	}
+
+	if (write(fd, node.data.value, node_data_value_size) < 0) {
+		hash_error("write node.data.value error : %s.", strerror(errno));
 		goto close_file;
 	}
 
@@ -268,7 +322,7 @@ exit:
 	return ret;
 }
 
-int add_node(const char* path, hash_node_data_t* input,
+int add_node(const char* path, hash_node_data_t* input_node_data,
 		int (*cb)(hash_node_data_t*, hash_node_data_t*)) {
 	int ret = -1;
 	int fd = 0;
@@ -303,7 +357,7 @@ int add_node(const char* path, hash_node_data_t* input,
 	header_data_value_size = header.header_data_value_size;
 	node_data_value_size = header.node_data_value_size;
 
-	group = input->key % hash_slot_cnt;
+	group = input_node_data->key % hash_slot_cnt;
 	offset = first_node_offset = (sizeof(hash_header_t) + header_data_value_size)\
 		 + group * (sizeof(hash_node_t) + node_data_value_size);
 
@@ -352,7 +406,7 @@ int add_node(const char* path, hash_node_data_t* input,
 					&& first_node_offset == node.prev_offset) {
 #if MORE_ADD_NODE_INFO
 				hash_debug("(FIRST) <0x%lx> (0x%lx : %d ) <0x%lx>",
-						node.prev_offset, offset, input->key, node.next_offset);
+						node.prev_offset, offset, input_node_data->key, node.next_offset);
 #endif
 				node.prev_offset = node.next_offset = first_node_offset;
 			}
@@ -361,7 +415,7 @@ int add_node(const char* path, hash_node_data_t* input,
 			else if (0 == node.used && first_node_offset != node.next_offset) {
 #if MORE_ADD_NODE_INFO
 				hash_debug(" (USED) <0x%lx> (0x%lx : %d ) <0x%lx>",
-						node.prev_offset, offset, input->key, node.next_offset);
+						node.prev_offset, offset, input_node_data->key, node.next_offset);
 #endif
 			}
 
@@ -416,7 +470,7 @@ int add_node(const char* path, hash_node_data_t* input,
 
 #if MORE_ADD_NODE_INFO
 				hash_debug(" (TAIL) <0x%lx> (0x%lx : %d ) <0x%lx>",
-						node.prev_offset, new_node_offset, input->key, node.next_offset);
+						node.prev_offset, new_node_offset, input_node_data->key, node.next_offset);
 #endif
 			}
 #undef MORE_ADD_NODE_INFO
@@ -424,7 +478,7 @@ int add_node(const char* path, hash_node_data_t* input,
 			/**** 4. START 写入新节点的其他信息 ****/
 			node.used = 1;
 
-			cb(&(node.data), input);
+			cb(&(node.data), input_node_data);
 
 			if (write(fd, &node, sizeof(hash_node_t)) < 0) {
 				hash_error("write node error : %s.", strerror(errno));
@@ -453,7 +507,7 @@ exit:
 	return ret;
 }
 
-int del_node(const char* path, hash_node_data_t* input,
+int del_node(const char* path, hash_node_data_t* input_node_data,
 		int (*cb)(hash_node_data_t*, hash_node_data_t*)) {
 	int ret = -1;
 	int fd = 0;
@@ -485,7 +539,7 @@ int del_node(const char* path, hash_node_data_t* input,
 	header_data_value_size = header.header_data_value_size;
 	node_data_value_size = header.node_data_value_size;
 
-	group = input->key % hash_slot_cnt;
+	group = input_node_data->key % hash_slot_cnt;
 	offset = first_node_offset = (sizeof(hash_header_t) + header_data_value_size)\
 		 + group * (sizeof(hash_node_t) + node_data_value_size);
 
@@ -514,7 +568,7 @@ int del_node(const char* path, hash_node_data_t* input,
 		node.data.value = node_data_value;
 
 		// 比较的同时，清空node.data中的相关数据
-		if (0 == cb(&(node.data), input)) {
+		if (0 == cb(&(node.data), input_node_data)) {
 			node.used = 0;
 
 			// 移到节点起始位置
@@ -529,7 +583,7 @@ int del_node(const char* path, hash_node_data_t* input,
 			}
 
 			if (write(fd, node.data.value, node_data_value_size) < 0) {
-				hash_error("del node_data_value error : %s.", strerror(errno));
+				hash_error("del node.data.value error : %s.", strerror(errno));
 				goto close_file;
 			}
 
@@ -551,7 +605,8 @@ exit:
 
 // traverse_type 为 TRAVERSE_ALL 时，hash_key可随意填写
 uint8_t traverse_nodes(const char* path, traverse_type_t traverse_type, uint32_t hash_key,
-		print_t print, hash_node_data_t* input, traverse_action_t (*cb)(hash_node_t*, hash_node_data_t*)) {
+		print_t print, hash_node_data_t* input_node_data,
+		traverse_action_t (*cb)(hash_node_t*, hash_node_data_t*)) {
 	traverse_action_t action = TRAVERSE_ACTION_DO_NOTHING;
 	uint8_t i = 0;
 	int fd = 0;
@@ -633,7 +688,7 @@ uint8_t traverse_nodes(const char* path, traverse_type_t traverse_type, uint32_t
 
 			if (WITH_PRINT == print) { printf("<0x%lX> ( 0x%lX : ", node.prev_offset, offset); }
 
-			action = cb(&node, input);
+			action = cb(&node, input_node_data);
 
 			if (WITH_PRINT == print) { printf(" ) <0x%lX>", node.next_offset); }
 

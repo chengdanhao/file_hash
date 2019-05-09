@@ -34,14 +34,14 @@
 
 int _add_alarm_tone_cb(hash_node_data_t* file, hash_node_data_t* input) {
 	file->key = input->key;
-	memcpy(file->value, input->value, sizeof(alarm_tone_value_t));
+	memcpy(file->value, input->value, sizeof(alarm_tone_data_value_t));
 	return 0;
 }
 
 int _del_alarm_tone_cb(hash_node_data_t* file, hash_node_data_t* input) {
 	int ret = -1;
-	alarm_tone_value_t* file_alarm_tone = (alarm_tone_value_t*)(file->value);
-	alarm_tone_value_t* input_alarm_tone = (alarm_tone_value_t*)(input->value);
+	alarm_tone_data_value_t* file_alarm_tone = (alarm_tone_data_value_t*)(file->value);
+	alarm_tone_data_value_t* input_alarm_tone = (alarm_tone_data_value_t*)(input->value);
 
 	if (file_alarm_tone->time_stamp == input_alarm_tone->time_stamp) {
 		file->key = 0;
@@ -54,7 +54,7 @@ int _del_alarm_tone_cb(hash_node_data_t* file, hash_node_data_t* input) {
 }
 
 traverse_action_t _print_alarm_tone_node_cb(hash_node_t* node, hash_node_data_t* input) {
-	alarm_tone_value_t* alarm_tone = (alarm_tone_value_t*)(node->data.value);
+	alarm_tone_data_value_t* alarm_tone = (alarm_tone_data_value_t*)(node->data.value);
 
 	if (node->used) {
 		printf("\e[7;37m%u : %s\e[0m", alarm_tone->time_stamp, alarm_tone->path);
@@ -67,11 +67,11 @@ traverse_action_t _print_alarm_tone_node_cb(hash_node_t* node, hash_node_data_t*
 
 traverse_action_t _find_alarm_tone_cb(hash_node_t* node, hash_node_data_t* input) {
 	int action = TRAVERSE_ACTION_DO_NOTHING;
-	alarm_tone_value_t* file_alarm_tone = (alarm_tone_value_t*)(node->data.value);
-	alarm_tone_value_t* input_alarm_tone = (alarm_tone_value_t*)(input->value);
+	alarm_tone_data_value_t* file_alarm_tone = (alarm_tone_data_value_t*)(node->data.value);
+	alarm_tone_data_value_t* input_alarm_tone = (alarm_tone_data_value_t*)(input->value);
 
 	if (node->used && file_alarm_tone->time_stamp == input_alarm_tone->time_stamp) {
-		memcpy(input_alarm_tone, file_alarm_tone, sizeof(alarm_tone_value_t));
+		memcpy(input_alarm_tone, file_alarm_tone, sizeof(alarm_tone_data_value_t));
 		action = TRAVERSE_ACTION_BREAK;
 	}
 
@@ -81,7 +81,7 @@ traverse_action_t _find_alarm_tone_cb(hash_node_t* node, hash_node_data_t* input
 // 如果返回值大于0，说明找到了节点，再取alarm_tone_path
 int find_alarm_tone(uint32_t key, uint32_t time_stamp, char* alarm_tone_path) {
 	hash_node_data_t data;
-	alarm_tone_value_t alarm_tone;
+	alarm_tone_data_value_t alarm_tone;
 	int ret = -1;
 
 	memset(&data, 0, sizeof(data));
@@ -106,7 +106,7 @@ int find_alarm_tone(uint32_t key, uint32_t time_stamp, char* alarm_tone_path) {
 int add_alarm_tone(uint32_t key, uint32_t time_stamp, char* alarm_tone_path) {
 	int ret = -1;
 	hash_node_data_t data;
-	alarm_tone_value_t alarm_tone;
+	alarm_tone_data_value_t alarm_tone;
 
 	if (find_alarm_tone(key, time_stamp, alarm_tone_path) > 0) {
 		at_debug("already exist '%d'", time_stamp);
@@ -137,7 +137,7 @@ exit:
 int del_alarm_tone(uint32_t key, uint32_t time_stamp) {
 	int ret = -1;
 	hash_node_data_t data;
-	alarm_tone_value_t alarm_tone;
+	alarm_tone_data_value_t alarm_tone;
 
 	memset(&data, 0, sizeof(data));
 	memset(&alarm_tone, 0, sizeof(alarm_tone));
@@ -164,5 +164,5 @@ void show_alarm_tone_list() {
 
 int init_alarm_tone_hash_engine() {
 	return init_hash_engine(ALARM_TONE_LIST_PATH, FORCE_INIT,
-			ALARM_TONE_LIST_SLOT_CNT,sizeof(alarm_tone_value_t), 0);
+			ALARM_TONE_LIST_SLOT_CNT, sizeof(alarm_tone_data_value_t), 0);
 }
