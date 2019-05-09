@@ -32,32 +32,33 @@
 #define at_error(fmt, ...)
 #endif
 
-int _add_alarm_tone_cb(hash_node_data_t* file, hash_node_data_t* input) {
-	file->key = input->key;
-	memcpy(file->value, input->value, sizeof(alarm_tone_value_t));
+int _add_alarm_tone_cb(hash_node_data_t* file_node_data, hash_node_data_t* input_node_data) {
+	file_node_data->key = input_node_data->key;
+	memcpy(file_node_data->value, input_node_data->value, sizeof(alarm_tone_data_value_t));
 	return 0;
 }
 
-int _del_alarm_tone_cb(hash_node_data_t* file, hash_node_data_t* input) {
+int _del_alarm_tone_cb(hash_node_data_t* file_node_data, hash_node_data_t* input_node_data) {
 	int ret = -1;
-	alarm_tone_value_t* file_alarm_tone = (alarm_tone_value_t*)(file->value);
-	alarm_tone_value_t* input_alarm_tone = (alarm_tone_value_t*)(input->value);
 
-	if (file_alarm_tone->time_stamp == input_alarm_tone->time_stamp) {
-		file->key = 0;
-		file_alarm_tone->time_stamp = 0;
-		memset(file_alarm_tone->path, 0, MAX_ALARM_TONE_PATH_LEN);
+	alarm_tone_data_value_t* file_alarm_tone_data_value = (alarm_tone_data_value_t*)(file_node_data->value);
+	alarm_tone_data_value_t* input_alarm_tone_data_value = (alarm_tone_data_value_t*)(input_node_data->value);
+
+	if (file_alarm_tone_data_value->time_stamp == input_alarm_tone_data_value->time_stamp) {
+		file_node_data->key = 0;
+		file_alarm_tone_data_value->time_stamp = 0;
+		memset(file_alarm_tone_data_value->path, 0, MAX_ALARM_TONE_PATH_LEN);
 		ret = 0;
 	}
 
 	return ret;
 }
 
-traverse_action_t _print_alarm_tone_node_cb(hash_node_t* node, hash_node_data_t* input) {
-	alarm_tone_value_t* alarm_tone = (alarm_tone_value_t*)(node->data.value);
+traverse_action_t _print_alarm_tone_node_cb(hash_node_t* file_node, hash_node_data_t* input_node_data) {
+	alarm_tone_data_value_t* alarm_tone_data_value = (alarm_tone_data_value_t*)(file_node->data.value);
 
-	if (node->used) {
-		printf("\e[7;37m%u : %s\e[0m", alarm_tone->time_stamp, alarm_tone->path);
+	if (file_node->used) {
+		printf("\e[7;37m%u : %s\e[0m", alarm_tone_data_value->time_stamp, alarm_tone_data_value->path);
 	} else {
 		printf("*");
 	}
@@ -65,13 +66,13 @@ traverse_action_t _print_alarm_tone_node_cb(hash_node_t* node, hash_node_data_t*
 	return TRAVERSE_ACTION_DO_NOTHING;
 }
 
-traverse_action_t _find_alarm_tone_cb(hash_node_t* node, hash_node_data_t* input) {
+traverse_action_t _find_alarm_tone_cb(hash_node_t* file_node, hash_node_data_t* input_node_data) {
 	int action = TRAVERSE_ACTION_DO_NOTHING;
-	alarm_tone_value_t* file_alarm_tone = (alarm_tone_value_t*)(node->data.value);
-	alarm_tone_value_t* input_alarm_tone = (alarm_tone_value_t*)(input->value);
+	alarm_tone_data_value_t* file_alarm_tone_data_value = (alarm_tone_data_value_t*)(file_node->data.value);
+	alarm_tone_data_value_t* input_alarm_tone_data_value = (alarm_tone_data_value_t*)(input_node_data->value);
 
-	if (node->used && file_alarm_tone->time_stamp == input_alarm_tone->time_stamp) {
-		memcpy(input_alarm_tone, file_alarm_tone, sizeof(alarm_tone_value_t));
+	if (file_node->used && file_alarm_tone_data_value->time_stamp == input_alarm_tone_data_value->time_stamp) {
+		memcpy(input_alarm_tone_data_value, file_alarm_tone_data_value, sizeof(alarm_tone_data_value_t));
 		action = TRAVERSE_ACTION_BREAK;
 	}
 
@@ -80,23 +81,23 @@ traverse_action_t _find_alarm_tone_cb(hash_node_t* node, hash_node_data_t* input
 
 // 如果返回值大于0，说明找到了节点，再取alarm_tone_path
 int find_alarm_tone(uint32_t key, uint32_t time_stamp, char* alarm_tone_path) {
-	hash_node_data_t data;
-	alarm_tone_value_t alarm_tone;
 	int ret = -1;
+	hash_node_data_t node_data;
+	alarm_tone_data_value_t alarm_tone_data_value;
 
-	memset(&data, 0, sizeof(data));
-	memset(&alarm_tone, 0, sizeof(alarm_tone));
+	memset(&node_data, 0, sizeof(node_data));
+	memset(&alarm_tone_data_value, 0, sizeof(alarm_tone_data_value));
 
-	alarm_tone.time_stamp = time_stamp;
+	alarm_tone_data_value.time_stamp = time_stamp;
 
-	data.key = key;
-	data.value = &alarm_tone;
+	node_data.key = key;
+	node_data.value = &alarm_tone_data_value;
 
 	if ((ret = traverse_nodes(ALARM_TONE_LIST_PATH,
-					TRAVERSE_SPECIFIC_HASH_KEY,
+					TRAVERSE_SPECIFIC_HASH_SLOT,
 					key, WITHOUT_PRINT,
-					&data, _find_alarm_tone_cb)) > 0) {
-		strncpy(alarm_tone_path, alarm_tone.path, MAX_ALARM_TONE_PATH_LEN);
+					&node_data, _find_alarm_tone_cb)) > 0) {
+		strncpy(alarm_tone_path, alarm_tone_data_value.path, MAX_ALARM_TONE_PATH_LEN);
 		at_info("found '%d', tone is '%s'", time_stamp, alarm_tone_path);
 	}
 
@@ -105,8 +106,8 @@ int find_alarm_tone(uint32_t key, uint32_t time_stamp, char* alarm_tone_path) {
 
 int add_alarm_tone(uint32_t key, uint32_t time_stamp, char* alarm_tone_path) {
 	int ret = -1;
-	hash_node_data_t data;
-	alarm_tone_value_t alarm_tone;
+	hash_node_data_t node_data;
+	alarm_tone_data_value_t alarm_tone_data_value;
 
 	if (find_alarm_tone(key, time_stamp, alarm_tone_path) > 0) {
 		at_debug("already exist '%d'", time_stamp);
@@ -114,16 +115,16 @@ int add_alarm_tone(uint32_t key, uint32_t time_stamp, char* alarm_tone_path) {
 		goto exit;
 	}
 
-	memset(&data, 0, sizeof(data));
-	memset(&alarm_tone, 0, sizeof(alarm_tone));
+	memset(&node_data, 0, sizeof(node_data));
+	memset(&alarm_tone_data_value, 0, sizeof(alarm_tone_data_value));
 
-	alarm_tone.time_stamp = time_stamp;
-	strncpy(alarm_tone.path, alarm_tone_path, sizeof(alarm_tone.path));
+	alarm_tone_data_value.time_stamp = time_stamp;
+	strncpy(alarm_tone_data_value.path, alarm_tone_path, sizeof(alarm_tone_data_value.path));
 
-	data.key = key;
-	data.value = &alarm_tone;
+	node_data.key = key;
+	node_data.value = &alarm_tone_data_value;
 
-	if (0 != (ret = add_node(ALARM_TONE_LIST_PATH, &data, _add_alarm_tone_cb))) {
+	if (0 != (ret = add_node(ALARM_TONE_LIST_PATH, &node_data, _add_alarm_tone_cb))) {
 		at_error("add failed : %s.", alarm_tone_path);
 		goto exit;
 	}
@@ -136,18 +137,18 @@ exit:
 
 int del_alarm_tone(uint32_t key, uint32_t time_stamp) {
 	int ret = -1;
-	hash_node_data_t data;
-	alarm_tone_value_t alarm_tone;
+	hash_node_data_t node_data;
+	alarm_tone_data_value_t alarm_tone_data_value;
 
-	memset(&data, 0, sizeof(data));
-	memset(&alarm_tone, 0, sizeof(alarm_tone));
+	memset(&node_data, 0, sizeof(node_data));
+	memset(&alarm_tone_data_value, 0, sizeof(alarm_tone_data_value));
 
-	alarm_tone.time_stamp = time_stamp;
+	alarm_tone_data_value.time_stamp = time_stamp;
 
-	data.key = key;
-	data.value = &alarm_tone;
+	node_data.key = key;
+	node_data.value = &alarm_tone_data_value;
 
-	if (0 != (ret = del_node(ALARM_TONE_LIST_PATH, &data, _del_alarm_tone_cb))) {
+	if (0 != (ret = del_node(ALARM_TONE_LIST_PATH, &node_data, _del_alarm_tone_cb))) {
 		at_error("del failed : %d.", time_stamp);
 		goto exit;
 	}
@@ -164,5 +165,5 @@ void show_alarm_tone_list() {
 
 int init_alarm_tone_hash_engine() {
 	return init_hash_engine(ALARM_TONE_LIST_PATH, FORCE_INIT,
-			ALARM_TONE_LIST_SLOT_CNT,sizeof(alarm_tone_value_t), 0);
+			ALARM_TONE_LIST_SLOT_CNT, sizeof(alarm_tone_data_value_t), 0);
 }

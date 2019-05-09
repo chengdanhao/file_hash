@@ -3,7 +3,7 @@
 #include "alarm_tone_node.h"
 
 void build_alarm_tone_list() {
-	alarm_tone_value_t playlist_add_1[] = {
+	alarm_tone_data_value_t playlist_add_1[] = {
 		{ 1, "A" },
 		{ 2, "B" },
 		{ 3, "C" },
@@ -11,13 +11,13 @@ void build_alarm_tone_list() {
 		{ 5, "E" },
 	};
 
-	alarm_tone_value_t playlist_del_1[] = {
+	alarm_tone_data_value_t playlist_del_1[] = {
 		{ 1, "A" },
 		{ 3, "C" },
 		{ 5, "E" },
 	};
 
-	alarm_tone_value_t playlist_add_2[] = {
+	alarm_tone_data_value_t playlist_add_2[] = {
 		{ 2, "B" },
 		{ 4, "D" },
 		{ 6, "F" },

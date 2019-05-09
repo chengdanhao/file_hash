@@ -1,5 +1,5 @@
-#ifndef __ALARM_TONE_H__
-#define __ALARM_TONE_H__
+#ifndef __ALARM_TONE_NODE_H__
+#define __ALARM_TONE_NODE_H__
 
 #include <stdint.h>
 #include "hash.h"
@@ -16,7 +16,7 @@
 typedef struct {
 	uint32_t time_stamp;
 	char path[MAX_ALARM_TONE_PATH_LEN];
-} alarm_tone_value_t;
+} alarm_tone_data_value_t;
 
 int find_alarm_tone(uint32_t hash_key, uint32_t time_stamp, char* alarm_tone_path);
 int add_alarm_tone(uint32_t hash_key, uint32_t time_stamp, char* alarm_tone_path);
