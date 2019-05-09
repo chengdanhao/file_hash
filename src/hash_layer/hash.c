@@ -217,7 +217,8 @@ int get_node(const char* path, get_node_method_t method, uint32_t hash_key,
 			 + group * (sizeof(hash_node_t) + node_data_value_size);
 	}
 
-	if (NULL == (node_data_value = (void*)calloc(1, node_data_value_size))) {
+	if (node_data_value_size > 0
+			&& NULL == (node_data_value = (void*)calloc(1, node_data_value_size))) {
 		hash_error("calloc failed.");
 		goto exit;
 	}
@@ -233,7 +234,8 @@ int get_node(const char* path, get_node_method_t method, uint32_t hash_key,
 		goto close_file;
 	}
 
-	if (read(fd, node_data_value, node_data_value_size) < 0) {
+	if (node_data_value_size > 0
+			&& read(fd, node_data_value, node_data_value_size) < 0) {
 		hash_error("read node_data_value failed : %s.", strerror(errno));
 		goto close_file;
 	}
@@ -292,7 +294,8 @@ int set_node(const char* path, get_node_method_t method, uint32_t hash_key,
 
 	node_data_value_size = header.node_data_value_size;
 
-	if (NULL == (node_data_value = (void*)calloc(1, node_data_value_size))) {
+	if (node_data_value_size > 0
+			&& NULL == (node_data_value = (void*)calloc(1, node_data_value_size))) {
 		hash_error("calloc failed.");
 		goto exit;
 	}
@@ -320,7 +323,8 @@ int set_node(const char* path, get_node_method_t method, uint32_t hash_key,
 		goto close_file;
 	}
 
-	if (write(fd, node.data.value, node_data_value_size) < 0) {
+	if (node_data_value_size > 0
+			&& write(fd, node.data.value, node_data_value_size) < 0) {
 		hash_error("write node.data.value error : %s.", strerror(errno));
 		goto close_file;
 	}
@@ -374,7 +378,8 @@ int add_node(const char* path, hash_node_data_t* input_node_data,
 	offset = first_node_offset = (sizeof(hash_header_t) + header_data_value_size)\
 		 + group * (sizeof(hash_node_t) + node_data_value_size);
 
-	if (NULL == (node_data_value = (void*)calloc(1, node_data_value_size))) {
+	if (node_data_value_size > 0
+			&& NULL == (node_data_value = (void*)calloc(1, node_data_value_size))) {
 		hash_error("calloc failed.");
 		goto exit;
 	}
@@ -391,7 +396,8 @@ int add_node(const char* path, hash_node_data_t* input_node_data,
 			goto close_file;
 		}
 
-		if (read(fd, node_data_value, node_data_value_size) < 0) {
+		if (node_data_value_size > 0
+				&& read(fd, node_data_value, node_data_value_size) < 0) {
 			hash_error("read node_data_value failed : %s.", strerror(errno));
 			goto close_file;
 		}
@@ -498,7 +504,8 @@ int add_node(const char* path, hash_node_data_t* input_node_data,
 				goto close_file;
 			}
 
-			if (write(fd, node.data.value, node_data_value_size) < 0) {
+			if (node_data_value_size > 0
+					&& write(fd, node.data.value, node_data_value_size) < 0) {
 				hash_error("write node_data_value error : %s.", strerror(errno));
 				goto close_file;
 			}
@@ -556,7 +563,8 @@ int del_node(const char* path, hash_node_data_t* input_node_data,
 	offset = first_node_offset = (sizeof(hash_header_t) + header_data_value_size)\
 		 + group * (sizeof(hash_node_t) + node_data_value_size);
 
-	if (NULL == (node_data_value = (void*)calloc(1, node_data_value_size))) {
+	if (node_data_value_size > 0
+			&& NULL == (node_data_value = (void*)calloc(1, node_data_value_size))) {
 		hash_error("calloc failed.");
 		goto exit;
 	}
@@ -572,7 +580,8 @@ int del_node(const char* path, hash_node_data_t* input_node_data,
 			goto close_file;
 		}
 
-		if (read(fd, node_data_value, node_data_value_size) < 0) {
+		if (node_data_value_size > 0
+				&& read(fd, node_data_value, node_data_value_size) < 0) {
 			hash_error("read node_data_value failed : %s.", strerror(errno));
 			goto close_file;
 		}
@@ -595,7 +604,8 @@ int del_node(const char* path, hash_node_data_t* input_node_data,
 				goto close_file;
 			}
 
-			if (write(fd, node.data.value, node_data_value_size) < 0) {
+			if (node_data_value_size > 0
+					&& write(fd, node.data.value, node_data_value_size) < 0) {
 				hash_error("del node.data.value error : %s.", strerror(errno));
 				goto close_file;
 			}
@@ -652,7 +662,8 @@ uint8_t traverse_nodes(const char* path, traverse_type_t traverse_type, uint32_t
 	header_data_value_size = header.header_data_value_size;
 	node_data_value_size = header.node_data_value_size;
 
-	if (NULL == (node_data_value = (void*)calloc(1, node_data_value_size))) {
+	if (node_data_value_size > 0
+			&& NULL == (node_data_value = (void*)calloc(1, node_data_value_size))) {
 		hash_error("calloc failed.");
 		goto exit;
 	}
@@ -686,7 +697,8 @@ uint8_t traverse_nodes(const char* path, traverse_type_t traverse_type, uint32_t
 				goto close_file;
 			}
 
-			if (read(fd, node_data_value, node_data_value_size) < 0) {
+			if (node_data_value_size > 0
+					&& read(fd, node_data_value, node_data_value_size) < 0) {
 				hash_error("read node_data_value failed : %s.", strerror(errno));
 				goto close_file;
 			}
@@ -718,7 +730,8 @@ uint8_t traverse_nodes(const char* path, traverse_type_t traverse_type, uint32_t
 					goto close_file;
 				}
 
-				if (write(fd, node.data.value, node_data_value_size) < 0) {
+				if (node_data_value_size > 0
+						&& write(fd, node.data.value, node_data_value_size) < 0) {
 					hash_error("del node_data_value error : %s.", strerror(errno));
 					goto close_file;
 				}
@@ -808,7 +821,8 @@ int init_hash_engine(const char* path, init_method_t rebuild,
 			goto close_file;
 		}
 
-		if (NULL == (node_data_value = (void*)calloc(1, node_data_value_size))) {
+		if (node_data_value_size > 0
+				&& NULL == (node_data_value = (void*)calloc(1, node_data_value_size))) {
 			hash_error("calloc failed.");
 			goto close_file;
 		}
@@ -824,7 +838,8 @@ int init_hash_engine(const char* path, init_method_t rebuild,
 				goto close_file;
 			}
 
-			if (write(fd, node.data.value, node_data_value_size) < 0) {
+			if (node_data_value_size > 0
+					&& write(fd, node.data.value, node_data_value_size) < 0) {
 				hash_error("init node.data.value error : %s.", strerror(errno));
 				goto close_file;
 			}
