@@ -277,6 +277,7 @@ int add_node(const char* path, hash_node_data_t* input,
 	off_t offset = 0;
 	off_t first_node_offset = 0;
 	hash_header_t header;
+	hash_node_t first_node;
 	hash_node_t node;
 	void* node_data_value = NULL;
 	uint32_t hash_slot_cnt = 0;
@@ -284,6 +285,7 @@ int add_node(const char* path, hash_node_data_t* input,
 	uint32_t node_data_value_size = 0;
 
 	memset(&header, 0, sizeof(hash_header_t));
+	memset(&first_node, 0, sizeof(first_node));
 	memset(&node, 0, sizeof(hash_node_t));
 
 	if ((fd = open(path, O_RDWR)) < 0) {
@@ -388,9 +390,6 @@ int add_node(const char* path, hash_node_data_t* input,
 				/**** 2. START 修改头节点的prev_offset值，指向新节点 ****/
 				lseek(fd, first_node_offset, SEEK_SET);
 
-				hash_node_t first_node;
-
-				memset(&first_node, 0, sizeof(first_node));
 
 				if (read(fd, &first_node, sizeof(hash_node_t)) < 0) {
 					hash_error("read node error : %s.", strerror(errno));
@@ -558,7 +557,7 @@ uint8_t traverse_nodes(const char* path, traverse_type_t traverse_type, uint32_t
 	int fd = 0;
 	off_t offset = 0;
 	off_t first_node_offset = 0;
-	hash_header_t hash_header;
+	hash_header_t header;
 	hash_node_t node;
 	void* node_data_value = NULL;
 	uint32_t hash_slot_cnt = 0;
@@ -567,7 +566,7 @@ uint8_t traverse_nodes(const char* path, traverse_type_t traverse_type, uint32_t
 	uint8_t break_or_not = 0;
 	static uint8_t s_first_node = 1;
 
-	memset(&hash_header, 0, sizeof(hash_header_t));
+	memset(&header, 0, sizeof(hash_header_t));
 	memset(&node, 0, sizeof(hash_node_t));
 
 	if ((fd = open(path, O_RDWR)) < 0) {
@@ -576,14 +575,14 @@ uint8_t traverse_nodes(const char* path, traverse_type_t traverse_type, uint32_t
 	}
 
 	// 先读取头部的哈希信息
-	if (read(fd, &hash_header, sizeof(hash_header_t)) < 0) {
-		hash_error("read hash_header error : %s.", strerror(errno));
+	if (read(fd, &header, sizeof(hash_header_t)) < 0) {
+		hash_error("read header error : %s.", strerror(errno));
 		goto close_file;
 	}
 
-	hash_slot_cnt = hash_header.hash_slot_cnt;
-	header_data_value_size = hash_header.header_data_value_size;
-	node_data_value_size = hash_header.node_data_value_size;
+	hash_slot_cnt = header.hash_slot_cnt;
+	header_data_value_size = header.header_data_value_size;
+	node_data_value_size = header.node_data_value_size;
 
 	if (NULL == (node_data_value = (void*)calloc(1, node_data_value_size))) {
 		hash_error("calloc failed.");
