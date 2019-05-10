@@ -35,9 +35,10 @@ typedef enum {
 	FORCE_INIT,
 } init_method_t;
 
-// 节点的数据部分，分key和value，其中value由用户再上层填充
+// 节点的数据部分，value由用户在上层填充，其他字段不能删除！！
 typedef struct {
-	uint32_t key;	// 该字段不能删！！！
+	uint8_t first_node;	// 用于标识第一个节点（入口节点）的位置
+	uint32_t key;	
 	void* value;
 } hash_node_data_t;
 

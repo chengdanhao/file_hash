@@ -45,12 +45,12 @@ int __set_playlist_cb(hash_header_data_t* file_header_data, hash_header_data_t* 
 }
 
 int __get_music_cb(hash_node_t* file_node, hash_node_t* output_node) {
-	void *addr = NULL;
+	void *addr = NULL;	// 防止文件中的无效value，修改掉output已链接好value
 
 	addr = output_node->data.value;
 	memcpy(output_node, file_node, sizeof(hash_node_t));
-	output_node->data.value = addr;
 
+	output_node->data.value = addr;
 	memcpy(output_node->data.value, file_node->data.value, sizeof(music_data_value_t));
 
 	return 0;
@@ -60,7 +60,9 @@ int __add_music_cb(hash_node_data_t* file_prev_node_data,
 		hash_node_data_t* file_curr_node_data,
 		hash_node_data_t* input_prev_node_data,
 		hash_node_data_t* input_curr_node_data) {
-	file_curr_node_data->key = input_curr_node_data->key;
+	memcpy(file_prev_node_data, input_prev_node_data, sizeof(hash_node_data_t));
+	memcpy(file_prev_node_data->value, input_prev_node_data->value, sizeof(music_data_value_t));
+	memcpy(file_curr_node_data, input_curr_node_data, sizeof(hash_node_data_t));
 	memcpy(file_curr_node_data->value, input_curr_node_data->value, sizeof(music_data_value_t));
 
 	return 0;
@@ -282,6 +284,11 @@ int _add_music(const char* playlist_path, uint32_t hash_key,
 
 	curr_node_data.key = hash_key;
 	curr_node_data.value = (void*)curr_music_data_value;
+
+	// 第一个节点
+	if (0 == strcmp(DUMMY_MUSIC_PATH, prev_music_data_value->path)) {
+		curr_node_data.first_node = 1;
+	}
 
 	if (0 != (ret = add_node(playlist_path, &prev_node_data, &curr_node_data, __add_music_cb))) {
 		music_error("add failed : %s.", curr_music_data_value->path);

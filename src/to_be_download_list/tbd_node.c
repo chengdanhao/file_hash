@@ -49,8 +49,8 @@ int _get_tbd_cb(hash_node_t* file_node, hash_node_t* output_node) {
 
 	addr = output_node->data.value;
 	memcpy(output_node, file_node, sizeof(hash_node_t));
-	output_node->data.value = addr;
 
+	output_node->data.value = addr;
 	memcpy(output_node->data.value, file_node->data.value, sizeof(tbd_node_data_value_t));
 
 	return 0;

@@ -47,7 +47,7 @@ void build_story_favorite_playlist() {
 	header_data_value.playlist_cnt = STORY_SLOT_CNT;
 	set_story_playlist_header(&header_data_value);
 
-	strncpy(prev_music_data_value.path, "dummy", sizeof(prev_music_data_value.path));
+	strncpy(prev_music_data_value.path, DUMMY_MUSIC_PATH, sizeof(prev_music_data_value.path));
 	for (int i = 0; i < sizeof(playlist_1) / sizeof(char*); i++) {
 		curr_music_data_value.delete_or_not = MUSIC_KEEP;
 		strncpy(curr_music_data_value.path, playlist_1[i], sizeof(curr_music_data_value.path));

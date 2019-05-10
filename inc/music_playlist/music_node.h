@@ -14,6 +14,8 @@
 #define STORY_SLOT_CNT 1
 #define ALBUM_SLOT_CNT MAX_PLAYLIST_CNT
 
+#define DUMMY_MUSIC_PATH "dummy_path"
+
 /*
  * 后续只需要修改这个头文件就可以自定义节点数据，底层代码不用修改
  */
