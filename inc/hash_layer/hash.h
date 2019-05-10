@@ -44,10 +44,11 @@ typedef struct {
 // 文件节点，以链式方式存储在文件中
 typedef struct {
 	uint8_t used;
-	off_t logic_prev_offset;	// 按序排列后的顺序
-	off_t logic_next_offset;
-	off_t physic_prev_offset;		// 物理层存储顺序
-	off_t physic_next_offset;
+	off_t login_first;	// 排序后第一个节点位置
+	off_t logic_prev;	// 按序排列后的顺序
+	off_t logic_next;
+	off_t physic_prev;	// 物理层存储顺序
+	off_t physic_next;
 	hash_node_data_t data;
 } hash_node_t;
 
@@ -83,7 +84,6 @@ int set_node(const char* path, get_node_method_t method, uint32_t hash_key,
 int add_node(const char* path,
 		hash_node_data_t* input_prev_node_data, hash_node_data_t* input_curr_node_data,
 		int (*cb)(hash_node_data_t*, hash_node_data_t*, hash_node_data_t*, hash_node_data_t*));
-
 
 // 删除节点
 int del_node(const char* path, hash_node_data_t* input_node_data,

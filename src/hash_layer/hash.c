@@ -420,28 +420,28 @@ int add_node(const char* path,
 		 *  1         0        已被使用的最后一个节点
 		 */
 #define MORE_ADD_NODE_INFO 0
-		if (0 == curr_node.used || first_node_physic_offset == curr_node.physic_next_offset) {
+		if (0 == curr_node.used || first_node_physic_offset == curr_node.physic_next) {
 			// 0 0, 首次使用第一个节点
 			if (0 == curr_node.used
-					&& first_node_physic_offset == curr_node.physic_next_offset
-					&& first_node_physic_offset == curr_node.physic_prev_offset) {
+					&& first_node_physic_offset == curr_node.physic_next
+					&& first_node_physic_offset == curr_node.physic_prev) {
 #if MORE_ADD_NODE_INFO
 				hash_debug("(FIRST) <0x%lx> (0x%lx : %d ) <0x%lx>",
-						curr_node.physic_prev_offset, physic_offset, input_curr_node_data->key, curr_node.physic_next_offset);
+						curr_node.physic_prev, physic_offset, input_curr_node_data->key, curr_node.physic_next);
 #endif
-				curr_node.physic_prev_offset = curr_node.physic_next_offset = first_node_physic_offset;
+				curr_node.physic_prev = curr_node.physic_next = first_node_physic_offset;
 			}
 
 			// 0 1, 被清空过的节点
-			else if (0 == curr_node.used && first_node_physic_offset != curr_node.physic_next_offset) {
+			else if (0 == curr_node.used && first_node_physic_offset != curr_node.physic_next) {
 #if MORE_ADD_NODE_INFO
 				hash_debug(" (USED) <0x%lx> (0x%lx : %d ) <0x%lx>",
-						curr_node.physic_prev_offset, physic_offset, input_curr_node_data->key, curr_node.physic_next_offset);
+						curr_node.physic_prev, physic_offset, input_curr_node_data->key, curr_node.physic_next);
 #endif
 			}
 
 			// 1 0, 正在使用的最后一个节点
-			else if (1 == curr_node.used && first_node_physic_offset == curr_node.physic_next_offset) {
+			else if (1 == curr_node.used && first_node_physic_offset == curr_node.physic_next) {
 				off_t curr_node_offset = physic_offset;
 
 				// 新节点在文件末尾插入，获取新节点偏移量
@@ -454,7 +454,7 @@ int add_node(const char* path,
 				/**** 1. START 修改当前节点的next_offset值，指向新节点 ****/
 				lseek(fd, curr_node_offset, SEEK_SET);
 
-				curr_node.physic_next_offset = tail_node_physic_offset;
+				curr_node.physic_next = tail_node_physic_offset;
 
 				if (write(fd, &curr_node, sizeof(hash_node_t)) < 0) {
 					hash_error("write curr_node error : %s.", strerror(errno));
@@ -471,7 +471,7 @@ int add_node(const char* path,
 					goto close_file;
 				}
 
-				first_node.physic_prev_offset = tail_node_physic_offset;
+				first_node.physic_prev = tail_node_physic_offset;
 
 				// 再次回到节点开头写回
 				lseek(fd, first_node_physic_offset, SEEK_SET);
@@ -485,13 +485,13 @@ int add_node(const char* path,
 				/**** 3. START 修改新节点的prev和next指针 ****/
 				lseek(fd, 0, SEEK_END);
 
-				curr_node.physic_prev_offset = curr_node_offset;
-				curr_node.physic_next_offset = first_node_physic_offset;
+				curr_node.physic_prev = curr_node_offset;
+				curr_node.physic_next = first_node_physic_offset;
 				/**** 3. END 修改新节点的prev和next指针 ****/
 
 #if MORE_ADD_NODE_INFO
 				hash_debug(" (TAIL) <0x%lx> (0x%lx : %d ) <0x%lx>",
-						curr_node.physic_prev_offset, tail_node_physic_offset, input_curr_node_data->key, curr_node.physic_next_offset);
+						curr_node.physic_prev, tail_node_physic_offset, input_curr_node_data->key, curr_node.physic_next);
 #endif
 			}
 #undef MORE_ADD_NODE_INFO
@@ -515,7 +515,7 @@ int add_node(const char* path,
 
 			break;
 		} else {
-			physic_offset = curr_node.physic_next_offset;
+			physic_offset = curr_node.physic_next;
 		}
 	}  while (physic_offset != first_node_physic_offset);
 
@@ -617,7 +617,7 @@ int del_node(const char* path, hash_node_data_t* input_node_data,
 			break;
 		}
 
-		offset = node.physic_next_offset;
+		offset = node.physic_next;
 	} while (offset != first_node_offset);
 
 close_file:
@@ -713,11 +713,11 @@ uint8_t traverse_nodes(const char* path, traverse_type_t traverse_type, uint32_t
 				if (WITH_PRINT == print) { printf(" --- "); }
 			}
 
-			if (WITH_PRINT == print) { printf("<0x%lX> ( 0x%lX : ", node.physic_prev_offset, offset); }
+			if (WITH_PRINT == print) { printf("<0x%lX> ( 0x%lX : ", node.physic_prev, offset); }
 
 			action = cb(&node, input_node_data);
 
-			if (WITH_PRINT == print) { printf(" ) <0x%lX>", node.physic_next_offset); }
+			if (WITH_PRINT == print) { printf(" ) <0x%lX>", node.physic_next); }
 
 			if (TRAVERSE_ACTION_UPDATE & action) {
 				// 跳回到节点头部
@@ -744,7 +744,7 @@ uint8_t traverse_nodes(const char* path, traverse_type_t traverse_type, uint32_t
 				goto close_file;
 			}
 
-			offset = node.physic_next_offset;
+			offset = node.physic_next;
 		} while (offset != first_node_offset);
 
 		if (WITH_PRINT == print) { printf("\n"); }
@@ -833,7 +833,7 @@ int init_hash_engine(const char* path, init_method_t rebuild,
 
 		for (i = 0; i < hash_slot_cnt; i++) {
 			offset = (sizeof(hash_header_t) + header_data_value_size) + i * (sizeof(hash_node_t) + node_data_value_size);
-			node.physic_prev_offset = node.physic_next_offset = offset;
+			node.physic_prev = node.physic_next = offset;
 
 			if (write(fd, &node, sizeof(hash_node_t)) < 0) {
 				hash_error("init node error : %s.", strerror(errno));
