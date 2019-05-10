@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "tbd_node.h"
-
+#if 0
 void build_tbd_list() {
 	tbd_node_data_value_t tbd_list[] = {
 		{ "A_URL", "A_PATH" },
@@ -34,4 +34,4 @@ int test_tbd_list_main() {
 	build_tbd_list();
 	return 0;
 }
-
+#endif

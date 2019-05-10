@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "alarm_tone_node.h"
-
+#if 0
 void build_alarm_tone_list() {
 	alarm_tone_data_value_t playlist_add_1[] = {
 		{ 1, "A" },
@@ -61,4 +61,4 @@ int test_alarm_tone_list_main() {
 	build_alarm_tone_list();
 	return 0;
 }
-
+#endif

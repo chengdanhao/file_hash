@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "tbd_node.h"
-
+#if 0
 #define TBD_INFO 1
 #define TBD_DBUG 1
 #define TBD_WARN 1
@@ -250,3 +250,4 @@ int init_tbd_hash_engine() {
 	return init_hash_engine(TBD_LIST_PATH, FORCE_INIT,
 			TBD_LIST_SLOT_CNT, sizeof(tbd_node_data_value_t), sizeof(tbd_header_data_value_t));
 }
+#endif

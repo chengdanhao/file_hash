@@ -17,7 +17,7 @@ void build_story_favorite_playlist() {
 		"KKK",
 	};
 
-	const char* playlist_2[] = {
+	/*const char* playlist_2[] = {
 		"AAA",
 		"BBB",
 		"EEE",
@@ -29,11 +29,15 @@ void build_story_favorite_playlist() {
 		"XXX new",
 		"YYY new",
 		"ZZZ new",
-	};
+	};*/
 
 	playlist_header_data_value_t header_data_value;
+	music_data_value_t prev_music_data_value;
+	music_data_value_t curr_music_data_value;
 
 	memset(&header_data_value, 0, sizeof(header_data_value));
+	memset(&prev_music_data_value, 0, sizeof(prev_music_data_value));
+	memset(&curr_music_data_value, 0, sizeof(curr_music_data_value));
 
 	// 1. 初始化哈希引擎
 	init_story_playlist_hash_engine();
@@ -43,14 +47,18 @@ void build_story_favorite_playlist() {
 	header_data_value.playlist_cnt = STORY_SLOT_CNT;
 	set_story_playlist_header(&header_data_value);
 
+	strncpy(prev_music_data_value.path, "dummy", sizeof(prev_music_data_value.path));
 	for (int i = 0; i < sizeof(playlist_1) / sizeof(char*); i++) {
-		add_story_music(playlist_1[i][0], playlist_1[i]);
+		curr_music_data_value.delete_or_not = MUSIC_KEEP;
+		strncpy(curr_music_data_value.path, playlist_1[i], sizeof(curr_music_data_value.path));
+		add_story_music(playlist_1[i][0], &prev_music_data_value, &curr_music_data_value);
+		prev_music_data_value = curr_music_data_value;
 	}
 
 	printf("-- 歌曲更新前 ---------------------------------------\n");
 	show_story_playlist();
 	printf("-----------------------------------------------------\n");
-
+#if 0
 	/** START 标准的添加音乐步骤 ***************/
 
 	// 3.1. 将所有歌曲默认标记为待删除
@@ -58,7 +66,9 @@ void build_story_favorite_playlist() {
 
 	// 3.2. 添加云端json串下发的歌曲，并将json串中的标记为已下载
 	for (int i = 0; i < sizeof(playlist_2) / sizeof(char*); i++) {
-		add_story_music(playlist_2[i][0], playlist_2[i]);
+		curr_music_data_value.delete_or_not = MUSIC_KEEP;
+		strncpy(curr_music_data_value.path, playlist_2[i], sizeof(curr_music_data_value.path));
+		add_story_music(playlist_2[i][0], &curr_music_data_value);
 	}
 
 	// 3.3. 清理列表中不存在的歌曲
@@ -82,8 +92,9 @@ void build_story_favorite_playlist() {
 		get_story_prev_music(0);
 	}
 	printf("---------------------------------------\n");
+#endif
 }
-
+#if 0
 uint32_t find_album_playlist_hash_slot(const char* playlist_name) {
 	uint32_t playlist_no = 0;
 	uint32_t playlist_cnt;
@@ -301,7 +312,7 @@ void build_album_favorite_playlist() {
 		printf("---------------------------------------\n");
 	}
 }
-
+#endif
 int test_music_playlist_main() {
 	build_story_favorite_playlist();
 	//build_album_favorite_playlist();

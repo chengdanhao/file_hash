@@ -56,9 +56,12 @@ int __get_music_cb(hash_node_t* file_node, hash_node_t* output_node) {
 	return 0;
 }
 
-int __add_music_cb(hash_node_data_t* file_node_data, hash_node_data_t* input_node_data) {
-	file_node_data->key = input_node_data->key;
-	memcpy(file_node_data->value, input_node_data->value, sizeof(music_data_value_t));
+int __add_music_cb(hash_node_data_t* file_prev_node_data,
+		hash_node_data_t* file_curr_node_data,
+		hash_node_data_t* input_prev_node_data,
+		hash_node_data_t* input_curr_node_data) {
+	file_curr_node_data->key = input_curr_node_data->key;
+	memcpy(file_curr_node_data->value, input_curr_node_data->value, sizeof(music_data_value_t));
 
 	return 0;
 }
@@ -255,36 +258,37 @@ uint8_t _find_music(const char* playlist_path, uint32_t hash_key, const char* mu
 		WITHOUT_PRINT, &node_data, __find_music_cb);
 }
 
-int _add_music(const char* playlist_path, uint32_t hash_key, const char* music_path) {
+int _add_music(const char* playlist_path, uint32_t hash_key,
+		const music_data_value_t* prev_music_data_value,
+		const music_data_value_t* curr_music_data_value) {
 	int ret = -1;
-	hash_node_data_t node_data;
-	music_data_value_t music_data_value;
+	hash_node_data_t prev_node_data;
+	hash_node_data_t curr_node_data;
 	playlist_header_data_value_t playlist_header_data_value;
 	uint32_t playlist_no = 0;
 
-	memset(&playlist_header_data_value, 0, sizeof(playlist_header_data_value));
-
-	if (_find_music(playlist_path, hash_key, music_path) > 0) {
-		music_debug("already exist '%s'", music_path);
+	if (_find_music(playlist_path, hash_key, curr_music_data_value->path) > 0) {
+		music_debug("already exist '%s'", curr_music_data_value->path);
 		ret = 0;
 		goto music_exist;
 	}
 
-	memset(&node_data, 0, sizeof(node_data));
-	memset(&music_data_value, 0, sizeof(music_data_value));
+	memset(&prev_node_data, 0, sizeof(prev_node_data));
+	memset(&curr_node_data, 0, sizeof(curr_node_data));
+	memset(&playlist_header_data_value, 0, sizeof(playlist_header_data_value));
 
-	music_data_value.delete_or_not = MUSIC_KEEP;
-	strncpy(music_data_value.path, music_path, sizeof(music_data_value.path));
+	prev_node_data.key = hash_key;
+	prev_node_data.value = (void*)prev_music_data_value;
 
-	node_data.key = hash_key;
-	node_data.value = &music_data_value;
+	curr_node_data.key = hash_key;
+	curr_node_data.value = (void*)curr_music_data_value;
 
-	if (0 != (ret = add_node(playlist_path, &node_data, __add_music_cb))) {
-		music_error("add failed : %s.", music_path);
+	if (0 != (ret = add_node(playlist_path, &prev_node_data, &curr_node_data, __add_music_cb))) {
+		music_error("add failed : %s.", curr_music_data_value->path);
 		goto exit;
 	}
 
-	music_info("add success : %s.", music_path);
+	music_info("add success : %s.", curr_music_data_value->path);
 
 music_exist:
 	_get_playlist_header(__func__, __LINE__, playlist_path, &playlist_header_data_value);
@@ -296,28 +300,24 @@ exit:
 	return ret;
 }
 
-int _del_music(const char* playlist_path, uint32_t hash_key, const char* music_path) {
+int _del_music(const char* playlist_path, uint32_t hash_key,
+		const music_data_value_t* music_data_value) {
 	int ret = -1;
 	hash_node_data_t node_data;
-	music_data_value_t music_data_value;
 	playlist_header_data_value_t playlist_header_data_value;
 	uint32_t playlist_no = 0;
 
 	memset(&node_data, 0, sizeof(node_data));
-	memset(&music_data_value, 0, sizeof(music_data_value));
-
-	music_data_value.delete_or_not = MUSIC_DELETE;
-	strncpy(music_data_value.path, music_path, MAX_MUSIC_PATH_LEN);
 
 	node_data.key = hash_key;
 	node_data.value = &music_data_value;
 
 	if (0 != (ret = del_node(playlist_path, &node_data, __del_music_cb))) {
-		music_error("del failed : %s.", music_path);
+		music_error("del failed : %s.", music_data_value->path);
 		goto exit;
 	}
 
-	music_warn("del success : %s.", music_path);
+	music_warn("del success : %s.", music_data_value->path);
 
 	_get_playlist_header(__func__, __LINE__, playlist_path,&playlist_header_data_value);
 	playlist_no = hash_key % playlist_header_data_value.playlist_cnt;

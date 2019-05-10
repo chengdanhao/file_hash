@@ -50,8 +50,8 @@ typedef enum {
 } direction_t;
 
 void _get_music(const char* playlist_path, uint32_t hash_key, direction_t prev_or_next);
-int _add_music(const char* playlist_path, uint32_t hash_key, const char* music_path);
-int _del_music(const char* playlist_path, uint32_t hash_key, const char* music_path);
+int _add_music(const char* playlist_path, uint32_t hash_key, const music_data_value_t* prev_music_data_value, const music_data_value_t* curr_music_data_value);
+int _del_music(const char* playlist_path, uint32_t hash_key, const music_data_value_t* music_data_value);
 void _show_playlist(const char* playlist_path);
 
 /*
@@ -79,8 +79,8 @@ int _init_playlist_hash_engine(const char* path, uint32_t slot_cnt);
 #define get_story_prev_music(hash_key)                _get_prev_music(STORY_PLAYLIST_PATH, hash_key)
 #define get_story_next_music(hash_key)                _get_next_music(STORY_PLAYLIST_PATH, hash_key)
 
-#define add_story_music(hash_key, music_path)         _add_music(STORY_PLAYLIST_PATH, hash_key, music_path)
-#define del_story_music(hash_key, music_path)         _del_music(STORY_PLAYLIST_PATH, hash_key, music_path)
+#define add_story_music(hash_key, prev_music_data_value, curr_music_data_value)         _add_music(STORY_PLAYLIST_PATH, hash_key, prev_music_data_value, curr_music_data_value)
+#define del_story_music(hash_key, music_data_value)         _del_music(STORY_PLAYLIST_PATH, hash_key, music_data_value)
 #define show_story_playlist()                         _show_playlist(STORY_PLAYLIST_PATH)
 
 #define clean_story_playlist(hash_key)                _clean_playlist(STORY_PLAYLIST_PATH, hash_key)
@@ -96,8 +96,8 @@ int _init_playlist_hash_engine(const char* path, uint32_t slot_cnt);
 #define get_album_prev_music(hash_key)                _get_prev_music(ALBUM_PLAYLIST_PATH, hash_key)
 #define get_album_next_music(hash_key)                _get_next_music(ALBUM_PLAYLIST_PATH, hash_key)
 
-#define add_album_music(hash_key, music_path)         _add_music(ALBUM_PLAYLIST_PATH, hash_key, music_path)
-#define del_album_music(hash_key, music_path)         _del_music(ALBUM_PLAYLIST_PATH, hash_key, music_path)
+#define add_album_music(hash_key, prev_music_data_value, curr_music_data_value)         _add_music(ALBUM_PLAYLIST_PATH, hash_key, prev_music_data_value, curr_music_data_value)
+#define del_album_music(hash_key, music_data_value)         _del_music(ALBUM_PLAYLIST_PATH, hash_key, music_data_value)
 #define show_album_playlist()                         _show_playlist(ALBUM_PLAYLIST_PATH)
 
 #define clean_album_playlist(hash_key)                _clean_playlist(ALBUM_PLAYLIST_PATH, hash_key)

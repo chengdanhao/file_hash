@@ -80,8 +80,10 @@ int set_node(const char* path, get_node_method_t method, uint32_t hash_key,
 		off_t offset, hash_node_t* input_node, int (*cb)(hash_node_t*, hash_node_t*));
 
 // 添加节点
-int add_node(const char* path, hash_node_data_t* input_node_data,
-		int (*cb)(hash_node_data_t*, hash_node_data_t*));
+int add_node(const char* path,
+		hash_node_data_t* input_prev_node_data, hash_node_data_t* input_curr_node_data,
+		int (*cb)(hash_node_data_t*, hash_node_data_t*, hash_node_data_t*, hash_node_data_t*));
+
 
 // 删除节点
 int del_node(const char* path, hash_node_data_t* input_node_data,
