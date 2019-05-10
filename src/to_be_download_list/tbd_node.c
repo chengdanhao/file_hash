@@ -159,8 +159,8 @@ next_node:
 
 	get_node(TBD_LIST_PATH, method, key, offset, &node, _get_tbd_cb);
 
-	tbd_header_data_value.next_offset = node.next_offset;
-	tbd_header_data_value.prev_offset = node.prev_offset;
+	tbd_header_data_value.next_offset = node.physic_next_offset;
+	tbd_header_data_value.prev_offset = node.physic_prev_offset;
 
 	strncpy(url, tbd_node_data_value.url, sizeof(tbd_node_data_value.url));
 	strncpy(path, tbd_node_data_value.path, sizeof(tbd_node_data_value.path));

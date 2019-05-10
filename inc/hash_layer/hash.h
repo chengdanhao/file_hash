@@ -44,8 +44,10 @@ typedef struct {
 // 文件节点，以链式方式存储在文件中
 typedef struct {
 	uint8_t used;
-	off_t prev_offset;
-	off_t next_offset;
+	off_t logic_prev_offset;	// 按序排列后的顺序
+	off_t logic_next_offset;
+	off_t physic_prev_offset;		// 物理层存储顺序
+	off_t physic_next_offset;
 	hash_node_data_t data;
 } hash_node_t;
 

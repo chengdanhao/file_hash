@@ -221,8 +221,8 @@ next_node:
 
 	get_node(playlist_path, method, hash_key, offset, &node, __get_music_cb);
 
-	playlist_header_data_value.playlist[playlist_no].next_offset = node.next_offset;
-	playlist_header_data_value.playlist[playlist_no].prev_offset = node.prev_offset;
+	playlist_header_data_value.playlist[playlist_no].next_offset = node.physic_next_offset;
+	playlist_header_data_value.playlist[playlist_no].prev_offset = node.physic_prev_offset;
 
 	playlist_header_data_value.playlist[playlist_no].saved_offset = offset;    // 保存当前播放列表播放进度
 	playlist_header_data_value.saved_offset_for_all = offset;                  // 保存所有播放列表中最新的播放进度
