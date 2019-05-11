@@ -79,7 +79,7 @@ int _init_playlist_hash_engine(const char* path, uint32_t slot_cnt);
 #define get_story_next_music(hash_key)                _get_next_music(STORY_PLAYLIST_PATH, hash_key)
 
 #define add_story_music(hash_key, prev_music_data_value, curr_music_data_value)         _add_music(STORY_PLAYLIST_PATH, hash_key, prev_music_data_value, curr_music_data_value)
-#define del_story_music(hash_key, music_data_value)         _del_music(STORY_PLAYLIST_PATH, hash_key, music_data_value)
+#define del_story_music(hash_key, music_path)         _del_music(STORY_PLAYLIST_PATH, hash_key, music_path)
 #define show_story_playlist()                         _show_playlist(STORY_PLAYLIST_PATH)
 
 #define clean_story_playlist(hash_key)                _clean_playlist(STORY_PLAYLIST_PATH, hash_key)

@@ -71,10 +71,8 @@ void build_story_favorite_playlist() {
 	printf("-----------------------------------------------------\n");
 
 	for (int i = 0; i < sizeof(del_playlist_1) / sizeof(char*); i++) {
-		curr_music_data_value.delete_or_not = MUSIC_DELETE;
-		strncpy(curr_music_data_value.path, del_playlist_1[i], sizeof(curr_music_data_value.path));
-		printf("prev(%s) -> curr(%s)\n", prev_music_data_value.path, curr_music_data_value.path);
-		add_story_music(del_playlist_1[i][0], &prev_music_data_value, &curr_music_data_value);
+	//for (int i = 0; i < 1; i++) {
+		del_story_music(del_playlist_1[i][0], del_playlist_1[i]);
 		prev_music_data_value = curr_music_data_value;
 	}
 

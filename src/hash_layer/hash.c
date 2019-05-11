@@ -763,15 +763,17 @@ int del_node(const char* path, hash_node_data_t* input_node_data,
 		int (*cb)(hash_node_data_t*, hash_node_data_t*)) {
 	int ret = -1;
 	int fd = 0;
-	uint32_t group = 0;
+	uint32_t which_slot = 0;
 	off_t offset = 0;
 	off_t first_node_offset = 0;
 	hash_header_t header;
+	slot_info_t* slots = NULL;
 	hash_node_t node;
 	void* node_data_value = NULL;
 	uint32_t slot_cnt = 0;
 	uint32_t header_data_value_size = 0;
 	uint32_t node_data_value_size = 0;
+	void *addr = NULL;	// 防止在memcpy中，文件中保存的上一次指针值覆盖了当前正在运行的指针
 
 	memset(&header, 0, sizeof(hash_header_t));
 	memset(&node, 0, sizeof(hash_node_t));
@@ -791,9 +793,21 @@ int del_node(const char* path, hash_node_data_t* input_node_data,
 	header_data_value_size = header.header_data_value_size;
 	node_data_value_size = header.node_data_value_size;
 
-	group = input_node_data->key % slot_cnt;
-	offset = first_node_offset = (sizeof(hash_header_t) + header_data_value_size)\
-		 + group * (sizeof(hash_node_t) + node_data_value_size);
+	if (NULL == (slots = (void*)calloc(slot_cnt, sizeof(slot_info_t)))) {
+		hash_error("calloc failed.");
+		goto exit;
+	}
+
+	if (read(fd, slots, slot_cnt * sizeof(slot_info_t)) < 0) {
+		hash_error("read slot_info error : %s.", strerror(errno));
+		goto close_file;
+	}
+
+	header.slots = slots;
+
+	which_slot = input_node_data->key % slot_cnt;
+	first_node_offset = sizeof(hash_header_t) + slot_cnt * sizeof(slot_info_t) + header_data_value_size\
+		 + which_slot * (sizeof(hash_node_t) + node_data_value_size);
 
 	if (node_data_value_size > 0
 			&& NULL == (node_data_value = (void*)calloc(1, node_data_value_size))) {
@@ -801,6 +815,7 @@ int del_node(const char* path, hash_node_data_t* input_node_data,
 		goto exit;
 	}
 
+	offset = first_node_offset;
 	do {
 		if (lseek(fd, offset, SEEK_SET) < 0) {
 			hash_error("seek to %ld fail : %s.", offset, strerror(errno));
@@ -831,11 +846,15 @@ int del_node(const char* path, hash_node_data_t* input_node_data,
 				goto close_file;
 			}
 
+			addr = node.data.value;
+			node.used = 0;
+			memset(&(node.data), 0, sizeof(hash_node_data_t));
 			if (write(fd, &node, sizeof(hash_node_t)) < 0) {
 				hash_error("del node error : %s.", strerror(errno));
 				goto close_file;
 			}
 
+			node.data.value = addr;
 			if (node_data_value_size > 0
 					&& write(fd, node.data.value, node_data_value_size) < 0) {
 				hash_error("del node.data.value error : %s.", strerror(errno));
@@ -854,6 +873,7 @@ close_file:
 	close(fd);
 
 exit:
+	safe_free(slots);
 	safe_free(node_data_value);
 	return ret;
 }

@@ -64,18 +64,10 @@ int __add_music_cb(hash_node_data_t* file_node_data, hash_node_data_t* input_pre
 }
 
 int __del_music_cb(hash_node_data_t* file_node_data, hash_node_data_t* input_node_data) {
-	int ret = -1;
 	music_data_value_t* file_music_data_value = (music_data_value_t*)(file_node_data->value);
 	music_data_value_t* input_music_data_value = (music_data_value_t*)(input_node_data->value);
 
-	if (0 == strncmp(file_music_data_value->path, input_music_data_value->path, MAX_MUSIC_PATH_LEN)) {
-		file_node_data->key = 0;
-		file_music_data_value->delete_or_not = MUSIC_DELETE;
-		memset(file_music_data_value->path, 0, MAX_MUSIC_PATH_LEN);
-		ret = 0;
-	}
-
-	return ret;
+	return strncmp(file_music_data_value->path, input_music_data_value->path, MAX_MUSIC_PATH_LEN);
 }
 
 traverse_action_t __print_music_cb(hash_node_t* file_node, hash_node_data_t* input_node_data) {
@@ -299,27 +291,30 @@ exit:
 }
 
 int _del_music(const char* playlist_path, uint32_t hash_key, const char* path) {
-#if 0
 	int ret = -1;
 	hash_node_data_t node_data;
+	music_data_value_t music_data_value;
 	playlist_header_data_value_t playlist_header_data_value;
 	uint32_t playlist_no = 0;
 
 	memset(&node_data, 0, sizeof(node_data));
+	memset(&music_data_value, 0, sizeof(music_data_value));
+
+	music_data_value.delete_or_not = MUSIC_DELETE;
+	strncpy(music_data_value.path, path, MAX_MUSIC_PATH_LEN);
 
 	node_data.key = hash_key;
 	node_data.value = &music_data_value;
 
 	if (0 != (ret = del_node(playlist_path, &node_data, __del_music_cb))) {
-		music_error("del failed : %s.", music_data_value->path);
+		music_error("del failed : %s.", path);
 		goto exit;
 	}
 
-	music_warn("del success : %s.", music_data_value->path);
+	music_warn("del success : %s.", path);
 
 exit:
 	return ret;
-#endif
 }
 
 void _show_playlist(const char* playlist_path) {
