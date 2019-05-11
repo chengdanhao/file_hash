@@ -287,7 +287,7 @@ int _add_music(const char* playlist_path, uint32_t hash_key,
 
 	// 第一个节点
 	if (0 == strcmp(DUMMY_MUSIC_PATH, prev_music_data_value->path)) {
-		curr_node_data.is_first_node = 1;
+		curr_node_data.is_first_node = true;
 	}
 
 	if (0 != (ret = add_node(playlist_path, &prev_node_data, &curr_node_data, __add_music_cb))) {
@@ -328,6 +328,7 @@ exit:
 
 void _show_playlist(const char* playlist_path) {
 	traverse_nodes(playlist_path, TRAVERSE_ALL, TRAVERSE_BY_PHYSIC, 0, WITH_PRINT, NULL, __print_music_cb);
+	traverse_nodes(playlist_path, TRAVERSE_ALL, TRAVERSE_BY_LOGIC, 0, WITH_PRINT, NULL, __print_music_cb);
 }
 
 #if 0
@@ -336,7 +337,7 @@ void _reset_playlist(const char* playlist_path, uint32_t hash_key) {
 	uint32_t playlist_no = 0;
 
 	traverse_nodes(playlist_path, TRAVERSE_SPECIFIC_HASH_SLOT, hash_key,
-		WITHOUT_PRINT, NULL, __reset_playlist_cb);
+			WITHOUT_PRINT, NULL, __reset_playlist_cb);
 }
 
 void _clean_playlist(const char* playlist_path, uint32_t hash_key) {

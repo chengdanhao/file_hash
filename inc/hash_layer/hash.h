@@ -2,6 +2,7 @@
 #define __HASH_H__
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #define safe_free(p) do { if (p) { free(p); p = NULL; } } while(0)
 
@@ -54,7 +55,7 @@ typedef struct {
 
 // 节点的数据部分，value由用户在上层填充，其他字段不能删除！！
 typedef struct {
-	uint8_t is_first_node;	// 表示是否是逻辑第一个节点
+	bool is_first_node;	// 表示是否是逻辑第一个节点
 	uint32_t key;	
 	void* value;
 } hash_node_data_t;

@@ -41,14 +41,15 @@ void build_story_favorite_playlist() {
 
 	// 1. 初始化哈希引擎
 	init_story_playlist_hash_engine();
-
+/*
 	// 3. 初始化播放列表
 	get_story_playlist_header(&header_data_value);
 	header_data_value.playlist_cnt = STORY_SLOT_CNT;
 	set_story_playlist_header(&header_data_value);
-
+*/
 	strncpy(prev_music_data_value.path, DUMMY_MUSIC_PATH, sizeof(prev_music_data_value.path));
 	for (int i = 0; i < sizeof(playlist_1) / sizeof(char*); i++) {
+	//for (int i = 0; i < 3; i++) {
 		curr_music_data_value.delete_or_not = MUSIC_KEEP;
 		strncpy(curr_music_data_value.path, playlist_1[i], sizeof(curr_music_data_value.path));
 		printf("prev(%s) -> curr(%s)\n", prev_music_data_value.path, curr_music_data_value.path);
