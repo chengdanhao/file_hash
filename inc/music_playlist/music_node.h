@@ -27,9 +27,6 @@ typedef enum {
 } action_t;
 
 typedef struct {
-	uint32_t music_cnt;
-	off_t prev_offset;
-	off_t next_offset;
 	off_t saved_offset;	// 记录上一次播放记录
 	char name[MAX_PLAYLIST_NAME_LEN];
 } playlist_t;
