@@ -341,7 +341,7 @@ exit:
 #define MORE_ADD_NODE_INFO 0
 int add_node(const char* path,
 		hash_node_data_t* input_prev_node_data, hash_node_data_t* input_curr_node_data,
-		int (*cb)(hash_node_data_t*, hash_node_data_t*, hash_node_data_t*, hash_node_data_t*)) {
+		int (*cb)(hash_node_data_t*, hash_node_data_t*)) {
 	int ret = -1;
 	int fd = 0;
 	bool find_prev_node = false;
@@ -354,7 +354,6 @@ int add_node(const char* path,
 	slot_info_t* slots = NULL;
 	slot_info_t slot_info;
 	hash_node_t first_physic_node;
-	hash_node_t prev_physic_node;
 	hash_node_t curr_physic_node;
 	off_t prev_logic_node_offset = 0;
 	off_t next_logic_node_offset = 0;
@@ -364,11 +363,11 @@ int add_node(const char* path,
 	uint32_t slot_cnt = 0;
 	uint32_t header_data_value_size = 0;
 	uint32_t node_data_value_size = 0;
+	void *addr = NULL;	// 防止在memcpy中，文件中保存的上一次指针值覆盖了当前正在运行的指针
 
 	memset(&header, 0, sizeof(hash_header_t));
 	memset(&slot_info, 0, sizeof(slot_info));
 	memset(&first_physic_node, 0, sizeof(hash_node_t));
-	memset(&prev_physic_node, 0, sizeof(hash_node_t));
 	memset(&curr_physic_node, 0, sizeof(hash_node_t));
 	memset(&prev_logic_node, 0, sizeof(hash_node_t));
 	memset(&next_logic_node, 0, sizeof(hash_node_t));
@@ -489,7 +488,8 @@ int add_node(const char* path,
 			}
 
 			curr_physic_node.data.value = node_data_value;
-			if (0 == memcmp(node_data_value, input_prev_node_data->value, node_data_value_size)) {
+			//if (0 == memcmp(node_data_value, input_prev_node_data->value, node_data_value_size)) {
+			if (0 == cb(&(curr_physic_node.data), input_prev_node_data)) {
 				find_prev_node = true;
 				prev_logic_node = curr_physic_node;
 				prev_logic_node_offset = physic_offset;
@@ -630,7 +630,11 @@ next_loop:
 
 			curr_physic_node.used = 1;
 
-			cb(&(prev_physic_node.data), &(curr_physic_node.data), input_prev_node_data, input_curr_node_data);
+			addr = curr_physic_node.data.value;
+			memcpy(&(curr_physic_node.data), input_curr_node_data, sizeof(hash_node_data_t));
+
+			curr_physic_node.data.value = addr;
+			memcpy(curr_physic_node.data.value, input_curr_node_data->value, node_data_value_size);
 
 			/* START 调整逻辑链表。上面已完成调整物理链表 */
 			// 第一个节点。
@@ -732,6 +736,16 @@ next_loop:
 			physic_offset = curr_physic_node.offsets.physic_next;
 		}
 	}  while (physic_offset != first_physic_node_offset);
+
+	if (lseek(fd, sizeof(hash_header_t), SEEK_SET) < 0) {
+		hash_error("seek to %ld fail : %s.", physic_offset, strerror(errno));
+		goto close_file;
+	}
+
+	if (write(fd, header.slots, slot_cnt * sizeof(slot_info_t)) < 0) {
+		hash_error("write header.slots error : %s.", strerror(errno));
+		goto close_file;
+	}
 
 	ret = 0;
 

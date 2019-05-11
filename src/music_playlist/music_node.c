@@ -56,16 +56,11 @@ int __get_music_cb(hash_node_t* file_node, hash_node_t* output_node) {
 	return 0;
 }
 
-int __add_music_cb(hash_node_data_t* file_prev_node_data,
-		hash_node_data_t* file_curr_node_data,
-		hash_node_data_t* input_prev_node_data,
-		hash_node_data_t* input_curr_node_data) {
-	memcpy(file_prev_node_data, input_prev_node_data, sizeof(hash_node_data_t));
-	memcpy(file_prev_node_data->value, input_prev_node_data->value, sizeof(music_data_value_t));
-	memcpy(file_curr_node_data, input_curr_node_data, sizeof(hash_node_data_t));
-	memcpy(file_curr_node_data->value, input_curr_node_data->value, sizeof(music_data_value_t));
+int __add_music_cb(hash_node_data_t* file_node_data, hash_node_data_t* input_prev_node_data) {
+	music_data_value_t *file_music_data_value = (music_data_value_t*)(file_node_data->value);
+	music_data_value_t *input_prev_music_data_value = (music_data_value_t*)(input_prev_node_data->value);
 
-	return 0;
+	return strncmp(file_music_data_value->path, input_prev_music_data_value->path, MAX_MUSIC_PATH_LEN);
 }
 
 int __del_music_cb(hash_node_data_t* file_node_data, hash_node_data_t* input_node_data) {
@@ -303,8 +298,8 @@ exit:
 	return ret;
 }
 
-int _del_music(const char* playlist_path, uint32_t hash_key,
-		const music_data_value_t* music_data_value) {
+int _del_music(const char* playlist_path, uint32_t hash_key, const char* path) {
+#if 0
 	int ret = -1;
 	hash_node_data_t node_data;
 	playlist_header_data_value_t playlist_header_data_value;
@@ -324,6 +319,7 @@ int _del_music(const char* playlist_path, uint32_t hash_key,
 
 exit:
 	return ret;
+#endif
 }
 
 void _show_playlist(const char* playlist_path) {

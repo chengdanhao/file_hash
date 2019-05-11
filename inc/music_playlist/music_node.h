@@ -50,7 +50,7 @@ typedef enum {
 
 void _get_music(const char* playlist_path, uint32_t hash_key, direction_t prev_or_next);
 int _add_music(const char* playlist_path, uint32_t hash_key, const music_data_value_t* prev_music_data_value, const music_data_value_t* curr_music_data_value);
-int _del_music(const char* playlist_path, uint32_t hash_key, const music_data_value_t* music_data_value);
+int _del_music(const char* playlist_path, uint32_t hash_key, const char* path);
 void _show_playlist(const char* playlist_path);
 
 /*
