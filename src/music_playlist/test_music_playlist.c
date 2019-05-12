@@ -25,12 +25,13 @@ void build_story_favorite_playlist() {
 		"KKK",
 		"JJJ",
 		"III",
-		/*"FFF",
+#if 1
+		"FFF",
 		"BBB",
 		"CCC",
 		"EEE",
-		"DDD",*/
-		
+		"DDD",
+#endif	
 	};
 
 	const char* playlist_2[] = {

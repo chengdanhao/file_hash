@@ -345,6 +345,7 @@ int add_node(const char* path,
 	int ret = -1;
 	int fd = 0;
 	bool find_prev_node = false;
+	bool is_first_node = false;
 	uint32_t which_slot = 0;
 	off_t physic_offset = 0;
 	off_t first_physic_node_offset = 0;
@@ -371,6 +372,7 @@ int add_node(const char* path,
 	memset(&curr_physic_node, 0, sizeof(hash_node_t));
 	memset(&prev_logic_node, 0, sizeof(hash_node_t));
 	memset(&next_logic_node, 0, sizeof(hash_node_t));
+	is_first_node = input_curr_node_data->is_first_node;
 
 	if ((fd = open(path, O_RDWR)) < 0) {
 		hash_error("open file %s fail : %s.", path, strerror(errno));
@@ -421,7 +423,7 @@ int add_node(const char* path,
 		goto close_file;
 	}
 
-	if (true == input_curr_node_data->is_first_node) {
+	if (true == is_first_node) {
 #if MORE_ADD_NODE_INFO
 		hash_debug("first node, clear list.");
 #endif
@@ -430,7 +432,7 @@ int add_node(const char* path,
 	physic_offset = first_physic_node_offset;
 	do {
 		// 如果是第一个节点，需要把所有节点清空
-		if (true == input_curr_node_data->is_first_node) {
+		if (true == is_first_node) {
 			if (lseek(fd, physic_offset, SEEK_SET) < 0) {
 				hash_error("seek to %ld fail : %s.", physic_offset, strerror(errno));
 				goto close_file;
@@ -507,17 +509,18 @@ next_loop:
 		physic_offset = curr_physic_node.offsets.physic_next;
 	} while (physic_offset != first_physic_node_offset);
 
-	if (true == input_curr_node_data->is_first_node) {
+	if (true == is_first_node) {
 		header.slots[which_slot].node_cnt = 0;
 #if MORE_ADD_NODE_INFO
 		hash_debug("finish clear list.");
 #endif
-	} else {
-		if (false == find_prev_node) {
+	} else if (false == find_prev_node) {
+		if (header.slots[which_slot].node_cnt > 0) {
 			hash_error("didn't find prev node.");
 			goto close_file;
 		} else {
-
+			hash_warn("no node in this slot, add first node.");
+			is_first_node = true;
 		}
 	}
 
@@ -643,7 +646,7 @@ next_loop:
 
 			/* START 调整逻辑链表。上面已完成调整物理链表 */
 			// 第一个节点。
-			if (true == curr_physic_node.data.is_first_node) {
+			if (true == is_first_node) {
 				header.slots[which_slot].first_logic_node_offset = physic_offset;
 				curr_physic_node.offsets.logic_prev = curr_physic_node.offsets.logic_next = new_physic_node_offset;
 #if MORE_ADD_NODE_INFO
@@ -1084,10 +1087,10 @@ uint8_t traverse_nodes(const char* path, traverse_type_t traverse_type, traverse
 	}
 
 	for (i = 0; i < slot_cnt; i++) {
-		if (0 == header.slots[i].node_cnt) {
+		/*if (0 == header.slots[i].node_cnt) {
 			hash_warn("no node in slot %d.", i);
 			continue;
-		}
+		}*/
 
 		s_first_node = 1;
 
