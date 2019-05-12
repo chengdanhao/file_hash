@@ -25,27 +25,29 @@ void build_story_favorite_playlist() {
 		"KKK",
 		"JJJ",
 		"III",
-		"FFF",
+		/*"FFF",
 		"BBB",
 		"CCC",
 		"EEE",
-		"DDD",
+		"DDD",*/
 		
 	};
 
-	/*const char* playlist_2[] = {
+	const char* playlist_2[] = {
 		"AAA",
 		"BBB",
-		"EEE",
-		"FFF",
 		"JJJ",
-		"UUU new",
-		"VVV new",
-		"WWW new",
 		"XXX new",
 		"YYY new",
 		"ZZZ new",
-	};*/
+	};
+
+	const char* playlist_3[] = {
+		"111",
+		"222",
+		"333",
+		"444",
+	};
 
 	playlist_header_data_value_t header_data_value;
 	music_data_value_t prev_music_data_value;
@@ -55,17 +57,10 @@ void build_story_favorite_playlist() {
 	memset(&prev_music_data_value, 0, sizeof(prev_music_data_value));
 	memset(&curr_music_data_value, 0, sizeof(curr_music_data_value));
 
-	// 1. 初始化哈希引擎
 	init_story_playlist_hash_engine();
-/*
-	// 3. 初始化播放列表
-	get_story_playlist_header(&header_data_value);
-	header_data_value.playlist_cnt = STORY_SLOT_CNT;
-	set_story_playlist_header(&header_data_value);
-*/
+
 	strncpy(prev_music_data_value.path, DUMMY_MUSIC_PATH, sizeof(prev_music_data_value.path));
 	for (int i = 0; i < sizeof(playlist_1) / sizeof(char*); i++) {
-	//for (int i = 0; i < 2; i++) {
 		curr_music_data_value.delete_or_not = MUSIC_KEEP;
 		strncpy(curr_music_data_value.path, playlist_1[i], sizeof(curr_music_data_value.path));
 		printf("prev(%s) -> curr(%s)\n", prev_music_data_value.path, curr_music_data_value.path);
@@ -73,41 +68,45 @@ void build_story_favorite_playlist() {
 		prev_music_data_value = curr_music_data_value;
 	}
 
-
-	printf("-- 歌曲更新前 ---------------------------------------\n");
+	printf("-- 第 1 次添加歌曲 ---------------------------------------\n");
 	show_story_playlist();
-	printf("-----------------------------------------------------\n");
-
+	printf("----------------------------------------------------------\n");
 
 	for (int i = 0; i < sizeof(del_playlist_1) / sizeof(char*); i++) {
-	//for (int i = 0; i < 1; i++) {
 		del_story_music(del_playlist_1[i][0], del_playlist_1[i]);
 		prev_music_data_value = curr_music_data_value;
-		show_story_playlist();
 	}
-#if 0
 
+	printf("-- 第 1 次删除歌曲 ---------------------------------------\n");
+	show_story_playlist();
+	printf("----------------------------------------------------------\n");
 
-	/** START 标准的添加音乐步骤 ***************/
-
-	// 3.1. 将所有歌曲默认标记为待删除
-	reset_story_playlist(0);
-
-	// 3.2. 添加云端json串下发的歌曲，并将json串中的标记为已下载
+	strncpy(prev_music_data_value.path, "DDD", sizeof(prev_music_data_value.path));
 	for (int i = 0; i < sizeof(playlist_2) / sizeof(char*); i++) {
 		curr_music_data_value.delete_or_not = MUSIC_KEEP;
 		strncpy(curr_music_data_value.path, playlist_2[i], sizeof(curr_music_data_value.path));
-		add_story_music(playlist_2[i][0], &curr_music_data_value);
+		printf("prev(%s) -> curr(%s)\n", prev_music_data_value.path, curr_music_data_value.path);
+		add_story_music(playlist_2[i][0], &prev_music_data_value, &curr_music_data_value);
+		prev_music_data_value = curr_music_data_value;
 	}
 
-	// 3.3. 清理列表中不存在的歌曲
-	clean_story_playlist(0);
-
-	/** END 标准添加音乐步骤*****************/
-
-	printf("-- 歌曲更新后 ---------------------------------------\n");
+	printf("-- 第 2 次增加歌曲 ---------------------------------------\n");
 	show_story_playlist();
-	printf("-----------------------------------------------------\n");
+	printf("----------------------------------------------------------\n");
+
+	strncpy(prev_music_data_value.path, DUMMY_MUSIC_PATH, sizeof(prev_music_data_value.path));
+	for (int i = 0; i < sizeof(playlist_3) / sizeof(char*); i++) {
+		curr_music_data_value.delete_or_not = MUSIC_KEEP;
+		strncpy(curr_music_data_value.path, playlist_3[i], sizeof(curr_music_data_value.path));
+		printf("prev(%s) -> curr(%s)\n", prev_music_data_value.path, curr_music_data_value.path);
+		add_story_music(playlist_3[i][0], &prev_music_data_value, &curr_music_data_value);
+		prev_music_data_value = curr_music_data_value;
+	}
+
+	printf("-- 第 3 次增加歌曲 ---------------------------------------\n");
+	show_story_playlist();
+	printf("----------------------------------------------------------\n");
+#if 0
 
 	get_story_playlist_header(&header_data_value);
 
