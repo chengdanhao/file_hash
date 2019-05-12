@@ -81,9 +81,9 @@ typedef struct {
 
 // 记录每个哈希槽的信息
 typedef struct {
-	off_t logic_first_node_offset;	// 记录排序后第一个节点位置
-	uint32_t node_cnt;
-	offset_t offsets;		// 最近一次访问的节点偏移量信息
+	off_t first_logic_node_offset;	// 记录排序后第一个节点位置
+	uint32_t node_cnt;				// 记录每个槽中节点个数
+	offset_t offsets;				// 最近一次访问的节点偏移量信息
 } slot_info_t;
 
 // 记录哈希链表的一些属性，由上层填充

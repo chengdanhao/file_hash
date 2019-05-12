@@ -349,14 +349,14 @@ int add_node(const char* path,
 	off_t physic_offset = 0;
 	off_t first_physic_node_offset = 0;
 	off_t first_logic_node_offset = 0;
-	off_t new_node_physic_offset = 0;
+	off_t prev_logic_node_offset = 0;
+	off_t next_logic_node_offset = 0;
+	off_t new_physic_node_offset = 0;
 	hash_header_t header;
 	slot_info_t* slots = NULL;
 	slot_info_t slot_info;
 	hash_node_t first_physic_node;
 	hash_node_t curr_physic_node;
-	off_t prev_logic_node_offset = 0;
-	off_t next_logic_node_offset = 0;
 	hash_node_t prev_logic_node;
 	hash_node_t next_logic_node;
 	void* node_data_value = NULL;
@@ -402,7 +402,7 @@ int add_node(const char* path,
 	which_slot = input_curr_node_data->key % slot_cnt;
 	first_physic_node_offset = sizeof(hash_header_t) + slot_cnt * sizeof(slot_info_t) + header_data_value_size\
 		 + which_slot * (sizeof(hash_node_t) + node_data_value_size);
-	first_logic_node_offset = slots[which_slot].logic_first_node_offset;
+	first_logic_node_offset = slots[which_slot].first_logic_node_offset;
 
 	if (node_data_value_size > 0
 			&& NULL == (node_data_value = (void*)calloc(1, node_data_value_size))) {
@@ -448,9 +448,6 @@ int add_node(const char* path,
 				goto close_file;
 			}
 
-			//memset(&curr_physic_node, 0, sizeof(hash_node_t));
-			//memset(node_data_value, 0, node_data_value_size);
-
 			if (write(fd, &curr_physic_node, sizeof(hash_node_t)) < 0) {
 				hash_error("write curr_physic_node error : %s.", strerror(errno));
 				goto close_file;
@@ -488,7 +485,6 @@ int add_node(const char* path,
 			}
 
 			curr_physic_node.data.value = node_data_value;
-			//if (0 == memcmp(node_data_value, input_prev_node_data->value, node_data_value_size)) {
 			if (0 == cb(&(curr_physic_node.data), input_prev_node_data)) {
 				find_prev_node = true;
 				prev_logic_node = curr_physic_node;
@@ -560,7 +556,7 @@ next_loop:
 						curr_physic_node.offsets.physic_prev, physic_offset, input_curr_node_data->key, curr_physic_node.offsets.physic_next);
 #endif
 				curr_physic_node.offsets.physic_prev = curr_physic_node.offsets.physic_next = first_physic_node_offset;
-				new_node_physic_offset = physic_offset;
+				new_physic_node_offset = physic_offset;
 			}
 
 			// 0 1, 被清空过的节点
@@ -569,13 +565,13 @@ next_loop:
 				hash_debug(" (USED) <0x%lX> (0x%lX : %d ) <0x%lX>",
 						curr_physic_node.offsets.physic_prev, physic_offset, input_curr_node_data->key, curr_physic_node.offsets.physic_next);
 #endif
-				new_node_physic_offset = physic_offset;
+				new_physic_node_offset = physic_offset;
 			}
 
 			// 1 0, 正在使用的最后一个节点
 			else if (1 == curr_physic_node.used && first_physic_node_offset == curr_physic_node.offsets.physic_next) {
 				// 新节点在文件末尾插入，获取新节点偏移量
-				if ((new_node_physic_offset = lseek(fd, 0, SEEK_END)) < 0) {
+				if ((new_physic_node_offset = lseek(fd, 0, SEEK_END)) < 0) {
 					hash_error("prepare new curr_physic_node, seek to %ld fail : %s.",
 							physic_offset, strerror(errno));
 					goto close_file;
@@ -584,7 +580,7 @@ next_loop:
 				/**** 1. START 修改 当前 节点的next_offset值，指向新节点 ****/
 				lseek(fd, physic_offset, SEEK_SET);
 
-				curr_physic_node.offsets.physic_next = new_node_physic_offset;
+				curr_physic_node.offsets.physic_next = new_physic_node_offset;
 
 				if (write(fd, &curr_physic_node, sizeof(hash_node_t)) < 0) {
 					hash_error("write curr_physic_node error : %s.", strerror(errno));
@@ -601,7 +597,7 @@ next_loop:
 					goto close_file;
 				}
 
-				first_physic_node.offsets.physic_prev = new_node_physic_offset;
+				first_physic_node.offsets.physic_prev = new_physic_node_offset;
 
 				// 再次回到节点开头写回
 				lseek(fd, first_physic_node_offset, SEEK_SET);
@@ -621,7 +617,7 @@ next_loop:
 
 #if MORE_ADD_NODE_INFO
 				hash_debug(" (TAIL) <0x%lX> (0x%lX : %d ) <0x%lX>",
-						curr_physic_node.offsets.physic_prev, new_node_physic_offset, input_curr_node_data->key, curr_physic_node.offsets.physic_next);
+						curr_physic_node.offsets.physic_prev, new_physic_node_offset, input_curr_node_data->key, curr_physic_node.offsets.physic_next);
 #endif
 			}
 
@@ -639,9 +635,9 @@ next_loop:
 			/* START 调整逻辑链表。上面已完成调整物理链表 */
 			// 第一个节点。
 			if (true == curr_physic_node.data.is_first_node) {
-				header.slots[which_slot].logic_first_node_offset = physic_offset;
-				curr_physic_node.offsets.logic_prev = curr_physic_node.offsets.logic_next = new_node_physic_offset;
-				hash_debug("first node offset 0x%lX.", new_node_physic_offset);
+				header.slots[which_slot].first_logic_node_offset = physic_offset;
+				curr_physic_node.offsets.logic_prev = curr_physic_node.offsets.logic_next = new_physic_node_offset;
+				hash_debug("first node offset 0x%lX.", new_physic_node_offset);
 			} else {
 				/*
 				 * 双向链表插入，curr为待插入节点
@@ -653,9 +649,9 @@ next_loop:
 
 				/* START 4.1. 读取 next prev 节点操作 */
 #if MORE_ADD_NODE_INFO
-				hash_debug("new node 0x%lX inset behind 0x%lX, 0x%lX <- 0x%lX -> 0x%lX.",
-						new_node_physic_offset, prev_logic_node_offset,
-						prev_logic_node.offsets.logic_next, prev_logic_node_offset, prev_logic_node.offsets.logic_next);
+				hash_debug("new node 0x%lX inset behind 0x%lX, before add 0x%lX <- 0x%lX -> 0x%lX.",
+						new_physic_node_offset, prev_logic_node_offset,
+						prev_logic_node.offsets.logic_prev, prev_logic_node_offset, prev_logic_node.offsets.logic_next);
 #endif
 
 				// prev 节点
@@ -669,37 +665,51 @@ next_loop:
 					goto close_file;
 				}
 
-				// next 节点
-				next_logic_node_offset = prev_logic_node.offsets.logic_next;
-				if (lseek(fd, next_logic_node_offset, SEEK_SET) < 0) {
-					hash_error("seek to %ld fail : %s.", physic_offset, strerror(errno));
-					goto close_file;
-				}
+				// next 节点。如果prev和next相等，说明当前只有一个节点，后面会有多个这种判断
+				if (prev_logic_node_offset != (next_logic_node_offset = prev_logic_node.offsets.logic_next)) {
+					if (lseek(fd, next_logic_node_offset, SEEK_SET) < 0) {
+						hash_error("seek to %ld fail : %s.", physic_offset, strerror(errno));
+						goto close_file;
+					}
 
-				if (read(fd, &next_logic_node, sizeof(hash_node_t)) < 0) {
-					hash_error("read next_logic_node error : %s.", strerror(errno));
-					goto close_file;
+					if (read(fd, &next_logic_node, sizeof(hash_node_t)) < 0) {
+						hash_error("read next_logic_node error : %s.", strerror(errno));
+						goto close_file;
+					}
 				}
 				/* END 4.1. 读取 next prev 节点操作 */
 
 				/* START 4.2. 重新建立节点链接 */
-				prev_logic_node.offsets.logic_next = new_node_physic_offset;
-				next_logic_node.offsets.logic_prev = new_node_physic_offset;
-				curr_physic_node.offsets.logic_next = next_logic_node_offset;
-				curr_physic_node.offsets.logic_prev = prev_logic_node_offset;
+				if (prev_logic_node_offset != next_logic_node_offset) {
+					prev_logic_node.offsets.logic_next = new_physic_node_offset;
+					next_logic_node.offsets.logic_prev = new_physic_node_offset;
+					curr_physic_node.offsets.logic_next = next_logic_node_offset;
+					curr_physic_node.offsets.logic_prev = prev_logic_node_offset;
+				}
+
+				// 在只有一个节点的情况下插入
+				else {
+					prev_logic_node.offsets.logic_prev = new_physic_node_offset;
+					prev_logic_node.offsets.logic_next = new_physic_node_offset;
+				}
 				/* END 4.2. 重新建立节点链接 */
 
+#if MORE_ADD_NODE_INFO
+				hash_debug("prevNode : 0x%lX <- (0x%lX) -> 0x%lX",
+						prev_logic_node.offsets.logic_prev, prev_logic_node_offset, prev_logic_node.offsets.logic_next);
+
+				hash_debug("currNode : 0x%lX <- (0x%lX) -> 0x%lX",
+						curr_physic_node.offsets.logic_prev, new_physic_node_offset, curr_physic_node.offsets.logic_next);
+
+				// 在只有一个节点的情况下插入
+				if (prev_logic_node_offset != next_logic_node_offset) {
+					hash_debug("nextNode : 0x%lX <- (0x%lX) -> 0x%lX",
+							next_logic_node.offsets.logic_prev, next_logic_node_offset, next_logic_node.offsets.logic_next);
+				}
+#endif
+
+
 				/* START 4.3. 写回到文件 */
-				if (lseek(fd, next_logic_node_offset, SEEK_SET) < 0) {
-					hash_error("seek to %ld fail : %s.", physic_offset, strerror(errno));
-					goto close_file;
-				}
-
-				if (write(fd, &next_logic_node, sizeof(hash_node_t)) < 0) {
-					hash_error("write next_logic_node error : %s.", strerror(errno));
-					goto close_file;
-				}
-
 				if (lseek(fd, prev_logic_node_offset, SEEK_SET) < 0) {
 					hash_error("seek to %ld fail : %s.", physic_offset, strerror(errno));
 					goto close_file;
@@ -709,13 +719,30 @@ next_loop:
 					hash_error("write next_logic_node error : %s.", strerror(errno));
 					goto close_file;
 				}
+
+				if (prev_logic_node_offset != next_logic_node_offset) {
+					if (lseek(fd, next_logic_node_offset, SEEK_SET) < 0) {
+						hash_error("seek to %ld fail : %s.", next_logic_node_offset, strerror(errno));
+						goto close_file;
+					}
+
+					if (write(fd, &next_logic_node, sizeof(hash_node_t)) < 0) {
+						hash_error("write next_logic_node error : %s.", strerror(errno));
+						goto close_file;
+					}
+
+					if (lseek(fd, prev_logic_node_offset, SEEK_SET) < 0) {
+						hash_error("seek to %ld fail : %s.", physic_offset, strerror(errno));
+						goto close_file;
+					}
+				}
 				/* END 4.3. 写回到文件 */
 			}
 
 			/* END 完成调整逻辑链表 */
 
-			if (lseek(fd, new_node_physic_offset, SEEK_SET) < 0) {
-				hash_error("seek to %ld fail : %s.", physic_offset, strerror(errno));
+			if (lseek(fd, new_physic_node_offset, SEEK_SET) < 0) {
+				hash_error("seek to %ld fail : %s.", new_physic_node_offset, strerror(errno));
 				goto close_file;
 			}
 
@@ -730,15 +757,15 @@ next_loop:
 				goto close_file;
 			}
 			/**** 4. END 写入新节点的其他信息 ****/
-
 			break;
 		} else {
 			physic_offset = curr_physic_node.offsets.physic_next;
 		}
 	}  while (physic_offset != first_physic_node_offset);
 
+	/* START 保存头部信息 */
 	if (lseek(fd, sizeof(hash_header_t), SEEK_SET) < 0) {
-		hash_error("seek to %ld fail : %s.", physic_offset, strerror(errno));
+		hash_error("seek to %ld fail : %s.", sizeof(hash_header_t), strerror(errno));
 		goto close_file;
 	}
 
@@ -746,6 +773,7 @@ next_loop:
 		hash_error("write header.slots error : %s.", strerror(errno));
 		goto close_file;
 	}
+	/* END 保存头部信息 */
 
 	ret = 0;
 
@@ -759,16 +787,22 @@ exit:
 }
 #undef MORE_ADD_NODE_INFO
 
+#define MORE_DEL_NODE_INFO 0
 int del_node(const char* path, hash_node_data_t* input_node_data,
 		int (*cb)(hash_node_data_t*, hash_node_data_t*)) {
 	int ret = -1;
 	int fd = 0;
 	uint32_t which_slot = 0;
 	off_t offset = 0;
-	off_t first_node_offset = 0;
+	off_t first_physic_node_offset = 0;
+	off_t first_logic_node_offset = 0;
+	off_t prev_logic_node_offset = 0;
+	off_t next_logic_node_offset = 0;
 	hash_header_t header;
 	slot_info_t* slots = NULL;
 	hash_node_t node;
+	hash_node_t prev_logic_node;
+	hash_node_t next_logic_node;
 	void* node_data_value = NULL;
 	uint32_t slot_cnt = 0;
 	uint32_t header_data_value_size = 0;
@@ -806,8 +840,9 @@ int del_node(const char* path, hash_node_data_t* input_node_data,
 	header.slots = slots;
 
 	which_slot = input_node_data->key % slot_cnt;
-	first_node_offset = sizeof(hash_header_t) + slot_cnt * sizeof(slot_info_t) + header_data_value_size\
+	first_physic_node_offset = sizeof(hash_header_t) + slot_cnt * sizeof(slot_info_t) + header_data_value_size\
 		 + which_slot * (sizeof(hash_node_t) + node_data_value_size);
+	first_logic_node_offset = header.slots[which_slot].first_logic_node_offset;
 
 	if (node_data_value_size > 0
 			&& NULL == (node_data_value = (void*)calloc(1, node_data_value_size))) {
@@ -815,7 +850,7 @@ int del_node(const char* path, hash_node_data_t* input_node_data,
 		goto exit;
 	}
 
-	offset = first_node_offset;
+	offset = first_physic_node_offset;
 	do {
 		if (lseek(fd, offset, SEEK_SET) < 0) {
 			hash_error("seek to %ld fail : %s.", offset, strerror(errno));
@@ -836,10 +871,112 @@ int del_node(const char* path, hash_node_data_t* input_node_data,
 		// 建立关联，方便后面使用。之后不要破坏这种关联（比如read调用）
 		node.data.value = node_data_value;
 
-		// 比较的同时，清空node.data中的相关数据
+		// 找到了节点
 		if (0 == cb(&(node.data), input_node_data)) {
 			node.used = 0;
+			--header.slots[which_slot].node_cnt;
 
+			/*
+			 * 双向链表删除，curr为待插入节点
+			 * nextNode->prev = prevNode;
+			 * prevNode->next = nextNode;
+			 */
+			/* START 调整逻辑链表 */
+			/* START 1. 读取 prev next 节点信息*/
+			// prev 节点
+			prev_logic_node_offset = node.offsets.logic_prev;
+			if (lseek(fd, prev_logic_node_offset, SEEK_SET) < 0) {
+				hash_error("seek to %ld fail : %s.", prev_logic_node_offset, strerror(errno));
+				goto close_file;
+			}
+
+			if (read(fd, &prev_logic_node, sizeof(hash_node_t)) < 0) {
+				hash_error("read next_logic_node error : %s.", strerror(errno));
+				goto close_file;
+			}
+
+			// next 节点。如果prev和next相等，说明当前只有一个节点，后面会有多个这种判断
+			next_logic_node_offset = node.offsets.logic_next;
+			if (lseek(fd, next_logic_node_offset, SEEK_SET) < 0) {
+				hash_error("seek to %ld fail : %s.", next_logic_node_offset, strerror(errno));
+				goto close_file;
+			}
+
+			if (read(fd, &next_logic_node, sizeof(hash_node_t)) < 0) {
+				hash_error("read next_logic_node error : %s.", strerror(errno));
+				goto close_file;
+			}
+			/* END 1. 读取 prev next 节点信息*/
+			/* START 2. 修改节点链式关系 */
+
+			// 在仅剩 一个 或者 两个 节点
+			if (prev_logic_node_offset == next_logic_node_offset) {
+				// 剩 1 个节点
+				if (offset == prev_logic_node_offset) {
+					hash_debug("only one node 0x%lX left.", offset);
+					header.slots[which_slot].first_logic_node_offset = first_physic_node_offset;
+					goto clear_node;
+				}
+
+				// 剩 2 个节点
+				else {
+					if (offset == first_logic_node_offset) {	// 删除逻辑第一个节点
+						hash_debug("2 delete first logic node 0x%lX, update first logic node to 0x%lX.",
+								offset, node.offsets.logic_next);
+						header.slots[which_slot].first_logic_node_offset = node.offsets.logic_next;
+					} else {
+						hash_debug("2 delete normal node 0x%lX.", offset);
+					}
+
+					
+					prev_logic_node.offsets.logic_prev = prev_logic_node_offset;
+					prev_logic_node.offsets.logic_next = prev_logic_node_offset;
+				}
+			} else {
+				if (offset == first_logic_node_offset) {	// 删除逻辑第一个节点
+					hash_debug("delete first logic node 0x%lX, update first logic node to 0x%lX.",
+							offset, node.offsets.logic_next);
+					header.slots[which_slot].first_logic_node_offset = node.offsets.logic_next;
+				} else {
+					hash_debug("delete normal node 0x%lX.", offset);
+				}
+
+				next_logic_node.offsets.logic_prev = prev_logic_node_offset;
+				prev_logic_node.offsets.logic_next = next_logic_node_offset;
+			}
+			/* END 2. 修改节点链式关系 */
+#if MORE_DEL_NODE_INFO
+			hash_info("after del 0x%lX, prev = ( 0x%lX <- 0x%lX -> 0x%lX ), next = ( 0x%lX <- 0x%lX -> 0x%lX ).", offset,
+					prev_logic_node.offsets.logic_prev, prev_logic_node_offset, prev_logic_node.offsets.logic_next,
+					next_logic_node.offsets.logic_prev, next_logic_node_offset, next_logic_node.offsets.logic_next);
+#endif
+			/* START 3. 写回到文件 */
+			if (lseek(fd, prev_logic_node_offset, SEEK_SET) < 0) {
+				hash_error("seek to %ld fail : %s.", prev_logic_node_offset, strerror(errno));
+				goto close_file;
+			}
+
+			if (write(fd, &prev_logic_node, sizeof(hash_node_t)) < 0) {
+				hash_error("write next_logic_node error : %s.", strerror(errno));
+				goto close_file;
+			}
+
+			if (prev_logic_node_offset != next_logic_node_offset) {
+				if (lseek(fd, next_logic_node_offset, SEEK_SET) < 0) {
+					hash_error("seek to %ld fail : %s.", next_logic_node_offset, strerror(errno));
+					goto close_file;
+				}
+
+				if (write(fd, &next_logic_node, sizeof(hash_node_t)) < 0) {
+					hash_error("write next_logic_node error : %s.", strerror(errno));
+					goto close_file;
+				}
+			}
+			/* END 3. 写回到文件 */
+			/* END 完成调整逻辑链表 */
+
+clear_node:
+			/* START 清空当前节点 */
 			// 移到节点起始位置
 			if (lseek(fd, offset, SEEK_SET) < 0) {
 				hash_error("seek back to %ld fail : %s.", offset, strerror(errno));
@@ -855,11 +992,25 @@ int del_node(const char* path, hash_node_data_t* input_node_data,
 			}
 
 			node.data.value = addr;
+			memset(node.data.value, 0, node_data_value_size);
 			if (node_data_value_size > 0
 					&& write(fd, node.data.value, node_data_value_size) < 0) {
 				hash_error("del node.data.value error : %s.", strerror(errno));
 				goto close_file;
 			}
+			/* END 清空当前节点 */
+
+			/* START 保存头部信息 */
+			if (lseek(fd, sizeof(hash_header_t), SEEK_SET) < 0) {
+				hash_error("seek to %ld fail : %s.", sizeof(hash_header_t), strerror(errno));
+				goto close_file;
+			}
+
+			if (write(fd, header.slots, slot_cnt * sizeof(slot_info_t)) < 0) {
+				hash_error("write header.slots error : %s.", strerror(errno));
+				goto close_file;
+			}
+			/* END 保存头部信息 */
 
 			ret = 0;
 
@@ -867,7 +1018,7 @@ int del_node(const char* path, hash_node_data_t* input_node_data,
 		}
 
 		offset = node.offsets.physic_next;
-	} while (offset != first_node_offset);
+	} while (offset != first_physic_node_offset);
 
 close_file:
 	close(fd);
@@ -877,6 +1028,7 @@ exit:
 	safe_free(node_data_value);
 	return ret;
 }
+#undef MORE_DEL_NODE_INFO
 
 // traverse_type 为 TRAVERSE_ALL 时，hash_key可随意填写
 uint8_t traverse_nodes(const char* path, traverse_type_t traverse_type, traverse_by_what_t by_what,
@@ -886,6 +1038,7 @@ uint8_t traverse_nodes(const char* path, traverse_type_t traverse_type, traverse
 	uint8_t i = 0;
 	int fd = 0;
 	off_t offset = 0;
+	off_t first_node_offset = 0;
 	off_t first_physic_node_offset = 0;
 	off_t first_logic_node_offset = 0;
 	hash_header_t header;
@@ -935,6 +1088,11 @@ uint8_t traverse_nodes(const char* path, traverse_type_t traverse_type, traverse
 	}
 
 	for (i = 0; i < slot_cnt; i++) {
+		if (0 == header.slots[i].node_cnt) {
+			hash_warn("no node in slot %d.", i);
+			continue;
+		}
+
 		s_first_node = 1;
 
 		// TODO: hash_key和i的关系不一定可以直接比较，后续版本需要完善
@@ -944,12 +1102,13 @@ uint8_t traverse_nodes(const char* path, traverse_type_t traverse_type, traverse
 
 		first_physic_node_offset = sizeof(hash_header_t) + slot_cnt * sizeof(slot_info_t) + header_data_value_size\
 			 + i * (sizeof(hash_node_t) + node_data_value_size);
-		first_logic_node_offset = header.slots[i].logic_first_node_offset;
+		first_logic_node_offset = header.slots[i].first_logic_node_offset;
 
-		offset = TRAVERSE_BY_LOGIC == by_what ? first_logic_node_offset : first_physic_node_offset;
+		first_node_offset = TRAVERSE_BY_LOGIC == by_what ? first_logic_node_offset : first_physic_node_offset;
 
-		if (WITH_PRINT == print) { printf("[%d]\t", i); }
+		if (WITH_PRINT == print) { printf("[%d] %s  ", i, TRAVERSE_BY_LOGIC == by_what ? " \e[7;32mLOGIC\e[0m" : "\e[7;34mPHYSIC\e[0m"); }
 
+		offset = first_node_offset;
 		do {
 			if (lseek(fd, offset, SEEK_SET) < 0) {
 				hash_error("seek to %ld fail : %s.", offset, strerror(errno));
@@ -975,11 +1134,11 @@ uint8_t traverse_nodes(const char* path, traverse_type_t traverse_type, traverse
 				if (WITH_PRINT == print) { printf(" --- "); }
 			}
 
-			if (WITH_PRINT == print) { printf("<0x%lX> ( 0x%lX : ", node.offsets.physic_prev, offset); }
+			if (WITH_PRINT == print) { printf("<0x%lX> ( 0x%lX : ", TRAVERSE_BY_LOGIC == by_what ? node.offsets.logic_prev : node.offsets.physic_prev, offset); }
 
 			action = cb(&node, input_node_data);
 
-			if (WITH_PRINT == print) { printf(" ) <0x%lX>", node.offsets.physic_next); }
+			if (WITH_PRINT == print) { printf(" ) <0x%lX>", TRAVERSE_BY_LOGIC == by_what ? node.offsets.logic_next : node.offsets.physic_next); }
 
 			if (TRAVERSE_ACTION_UPDATE & action) {
 				// 跳回到节点头部
@@ -1007,7 +1166,7 @@ uint8_t traverse_nodes(const char* path, traverse_type_t traverse_type, traverse
 			}
 
 			offset = TRAVERSE_BY_LOGIC == by_what ? node.offsets.logic_next : node.offsets.physic_next;
-		} while (offset != first_physic_node_offset);
+		} while (offset != first_node_offset);
 
 		if (WITH_PRINT == print) { printf("\n"); }
 	}
@@ -1096,7 +1255,7 @@ int init_hash_engine(const char* path, init_method_t rebuild,
 			node.offsets.physic_prev = node.offsets.physic_next = offset;
 			node.offsets.logic_prev = node.offsets.logic_next = offset;
 
-			header.slots[i].logic_first_node_offset = offset;
+			header.slots[i].first_logic_node_offset = offset;
 
 			if (lseek(fd, offset, SEEK_SET) < 0) {
 				hash_error("seek to %ld fail : %s.", offset, strerror(errno));

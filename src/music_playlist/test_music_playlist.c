@@ -19,12 +19,18 @@ void build_story_favorite_playlist() {
 
 	
 	const char* del_playlist_1[] = {
-		"AAA",
-		"CCC",
-		"DDD",
-		"FFF",
 		"GGG",
+		"HHH",
+		"AAA",
 		"KKK",
+		"JJJ",
+		"III",
+		"FFF",
+		"BBB",
+		"CCC",
+		"EEE",
+		"DDD",
+		
 	};
 
 	/*const char* playlist_2[] = {
@@ -59,6 +65,7 @@ void build_story_favorite_playlist() {
 */
 	strncpy(prev_music_data_value.path, DUMMY_MUSIC_PATH, sizeof(prev_music_data_value.path));
 	for (int i = 0; i < sizeof(playlist_1) / sizeof(char*); i++) {
+	//for (int i = 0; i < 2; i++) {
 		curr_music_data_value.delete_or_not = MUSIC_KEEP;
 		strncpy(curr_music_data_value.path, playlist_1[i], sizeof(curr_music_data_value.path));
 		printf("prev(%s) -> curr(%s)\n", prev_music_data_value.path, curr_music_data_value.path);
@@ -66,20 +73,21 @@ void build_story_favorite_playlist() {
 		prev_music_data_value = curr_music_data_value;
 	}
 
+
 	printf("-- 歌曲更新前 ---------------------------------------\n");
 	show_story_playlist();
 	printf("-----------------------------------------------------\n");
+
 
 	for (int i = 0; i < sizeof(del_playlist_1) / sizeof(char*); i++) {
 	//for (int i = 0; i < 1; i++) {
 		del_story_music(del_playlist_1[i][0], del_playlist_1[i]);
 		prev_music_data_value = curr_music_data_value;
-	}
-
-	printf("-- 删除歌曲后 ---------------------------------------\n");
 		show_story_playlist();
-	printf("-----------------------------------------------------\n");
+	}
 #if 0
+
+
 	/** START 标准的添加音乐步骤 ***************/
 
 	// 3.1. 将所有歌曲默认标记为待删除
