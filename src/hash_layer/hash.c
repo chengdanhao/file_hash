@@ -909,41 +909,40 @@ int del_node(const char* path, hash_node_data_t* input_node_data,
 			/* END 1. 读取 prev next 节点信息*/
 			/* START 2. 修改节点链式关系 */
 
-			// 在仅剩 一个 或者 两个 节点
-			if (prev_logic_node_offset == next_logic_node_offset) {
-				// 剩 1 个节点
-				if (offset == prev_logic_node_offset) {
-					hash_debug("only one node 0x%lX left.", offset);
-					header.slots[which_slot].first_logic_node_offset = first_physic_node_offset;
-					goto clear_node;
+			// 仅剩 一个 节点
+			if (offset == prev_logic_node_offset && offset == next_logic_node_offset) {
+				hash_debug("only 1 node 0x%lX left.", offset);
+				header.slots[which_slot].first_logic_node_offset = node.offsets.logic_next;
+				goto clear_node;
+			} else {
+				if (offset == first_logic_node_offset) {	// 删除逻辑第一个节点
+#if MORE_DEL_NODE_INFO
+					hash_debug("delete first logic node 0x%lX, update first logic node to 0x%lX.",
+							offset, node.offsets.logic_next);
+#endif
+					header.slots[which_slot].first_logic_node_offset = node.offsets.logic_next;
+				} else {
+#if MORE_DEL_NODE_INFO
+					hash_debug("delete normal node 0x%lX.", offset);
+#endif
 				}
 
-				// 剩 2 个节点
-				else {
-					if (offset == first_logic_node_offset) {	// 删除逻辑第一个节点
-						hash_debug("2 delete first logic node 0x%lX, update first logic node to 0x%lX.",
-								offset, node.offsets.logic_next);
-						header.slots[which_slot].first_logic_node_offset = node.offsets.logic_next;
-					} else {
-						hash_debug("2 delete normal node 0x%lX.", offset);
-					}
-
-					
+				// 剩两个节点
+				if (prev_logic_node_offset == next_logic_node_offset) {
+#if MORE_DEL_NODE_INFO
+					hash_debug("2 nodes left.");
+#endif
 					prev_logic_node.offsets.logic_prev = prev_logic_node_offset;
 					prev_logic_node.offsets.logic_next = prev_logic_node_offset;
 				}
-			} else {
-				if (offset == first_logic_node_offset) {	// 删除逻辑第一个节点
-					hash_debug("delete first logic node 0x%lX, update first logic node to 0x%lX.",
-							offset, node.offsets.logic_next);
-					header.slots[which_slot].first_logic_node_offset = node.offsets.logic_next;
-				} else {
-					hash_debug("delete normal node 0x%lX.", offset);
+				
+				// 更多节点
+				else {
+					next_logic_node.offsets.logic_prev = prev_logic_node_offset;
+					prev_logic_node.offsets.logic_next = next_logic_node_offset;
 				}
-
-				next_logic_node.offsets.logic_prev = prev_logic_node_offset;
-				prev_logic_node.offsets.logic_next = next_logic_node_offset;
 			}
+
 			/* END 2. 修改节点链式关系 */
 #if MORE_DEL_NODE_INFO
 			hash_info("after del 0x%lX, prev = ( 0x%lX <- 0x%lX -> 0x%lX ), next = ( 0x%lX <- 0x%lX -> 0x%lX ).", offset,
