@@ -318,7 +318,7 @@ exit:
 }
 
 void _show_playlist(const char* playlist_path) {
-	traverse_nodes(playlist_path, TRAVERSE_ALL, TRAVERSE_BY_PHYSIC, 0, WITH_PRINT, NULL, __print_music_cb);
+	//traverse_nodes(playlist_path, TRAVERSE_ALL, TRAVERSE_BY_PHYSIC, 0, WITH_PRINT, NULL, __print_music_cb);
 	traverse_nodes(playlist_path, TRAVERSE_ALL, TRAVERSE_BY_LOGIC, 0, WITH_PRINT, NULL, __print_music_cb);
 }
 

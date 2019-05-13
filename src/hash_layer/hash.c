@@ -424,9 +424,7 @@ int add_node(const char* path,
 	}
 
 	if (true == is_first_node) {
-#if MORE_ADD_NODE_INFO
-		hash_debug("first node, clear list.");
-#endif
+		hash_warn("first node, clear list.");
 	}
 
 	physic_offset = first_physic_node_offset;
@@ -1105,7 +1103,7 @@ uint8_t traverse_nodes(const char* path, traverse_type_t traverse_type, traverse
 
 		first_node_offset = TRAVERSE_BY_LOGIC == by_what ? first_logic_node_offset : first_physic_node_offset;
 
-		if (WITH_PRINT == print) { printf("[%d] %s  ", i, TRAVERSE_BY_LOGIC == by_what ? " \e[7;32mLOGIC\e[0m" : "\e[7;34mPHYSIC\e[0m"); }
+		if (WITH_PRINT == print) { printf("[%d] (%d) %s  ", i, header.slots[i].node_cnt, TRAVERSE_BY_LOGIC == by_what ? " \e[7;32mLOGIC\e[0m" : "\e[7;34mPHYSIC\e[0m"); }
 
 		offset = first_node_offset;
 		do {
