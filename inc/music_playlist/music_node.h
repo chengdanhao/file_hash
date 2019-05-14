@@ -50,7 +50,9 @@ typedef enum {
 	PREV_MUSIC,
 } direction_t;
 
-void _get_music(const char* playlist_path, uint32_t hash_key, direction_t prev_or_next);
+int _get_playlist_header(const char* func, const int line, const char* path, playlist_header_data_value_t* header_data_value);
+int _set_playlist_header(const char* func, const int line, const char* path, playlist_header_data_value_t* header_data_value);
+int _get_music(const char* playlist_path, uint32_t hash_key, direction_t prev_or_next);
 int _add_music(const char* playlist_path, uint32_t hash_key, const music_data_value_t* prev_music_data_value, const music_data_value_t* curr_music_data_value);
 int _del_music(const char* playlist_path, uint32_t hash_key, const char* path);
 void _show_playlist(const char* playlist_path);
@@ -71,6 +73,9 @@ int _init_playlist_hash_engine(const char* path, uint32_t slot_cnt);
 #define _get_next_music(playlist_path, hash_key) _get_music(playlist_path, hash_key, NEXT_MUSIC)
 
 /********************** 故事收藏 调用这些函数 **********************/
+#define get_story_playlist_header(header_data_value) _get_playlist_header(__func__, __LINE__, STORY_PLAYLIST_PATH, header_data_value)
+#define set_story_playlist_header(header_data_value) _set_playlist_header(__func__, __LINE__, STORY_PLAYLIST_PATH, header_data_value)
+
 #define get_story_prev_music(hash_key)                _get_prev_music(STORY_PLAYLIST_PATH, hash_key)
 #define get_story_next_music(hash_key)                _get_next_music(STORY_PLAYLIST_PATH, hash_key)
 
@@ -82,8 +87,8 @@ int _init_playlist_hash_engine(const char* path, uint32_t slot_cnt);
 /*******************************************************************/
 
 /********************** 专辑收藏 调用这些函数 **********************/
-#define get_album_playlist_header(path, header_data_value)  _get_playlist_header(ALBUM_PLAYLIST_PATH, header_data_value)
-#define set_album_playlist_header(path, header_data_value)  _set_playlist_header(ALBUM_PLAYLIST_PATH, header_data_value)
+#define get_album_playlist_header(header_data_value) _get_playlist_header(__func__, __LINE__, ALBUM_PLAYLIST_PATH, header_data_value)
+#define set_album_playlist_header(header_data_value) _set_playlist_header(__func__, __LINE__, ALBUM_PLAYLIST_PATH, header_data_value)
 
 #define get_album_prev_music(hash_key)                _get_prev_music(ALBUM_PLAYLIST_PATH, hash_key)
 #define get_album_next_music(hash_key)                _get_next_music(ALBUM_PLAYLIST_PATH, hash_key)

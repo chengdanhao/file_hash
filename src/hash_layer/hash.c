@@ -341,6 +341,7 @@ exit:
 }
 #undef DEBUG_SET_NODE
 #endif
+
 #define DEBUG_ADD_NODE 0
 int add_node(const char* path,
 		hash_node_data_t* input_prev_node_data, hash_node_data_t* input_curr_node_data,
@@ -518,7 +519,7 @@ next_loop:
 			hash_error("didn't find prev node.");
 			goto close_file;
 		} else {
-			hash_warn("no node in this slot, add first node.");
+			hash_warn("didn't find prev, and no node in this slot, treat curr as first node.");
 			is_first_node = true;
 		}
 	}
@@ -910,7 +911,7 @@ int del_node(const char* path, hash_node_data_t* input_node_data,
 
 			// 仅剩 一个 节点
 			if (offset == prev_logic_node_offset && offset == next_logic_node_offset) {
-				hash_debug("only 1 node 0x%lX left.", offset);
+				hash_warn("only 1 node 0x%lX left.", offset);
 				header.slots[which_slot].first_logic_node_offset = node.offsets.logic_next;
 				goto clear_node;
 			} else {
