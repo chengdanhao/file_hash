@@ -22,14 +22,14 @@ void build_story_favorite_playlist() {
 		"GGG",
 		"HHH",
 		"AAA",
+		"CCC",
 		"KKK",
 		"JJJ",
 		"III",
 #if 0
+		"EEE",
 		"FFF",
 		"BBB",
-		"CCC",
-		"EEE",
 		"DDD",
 #endif
 	};
@@ -37,6 +37,7 @@ void build_story_favorite_playlist() {
 	const char* playlist_2[] = {
 		"AAA",
 		"BBB",
+		"EEE",
 		"JJJ",
 		"XXX new",
 		"YYY new",
@@ -322,8 +323,8 @@ void build_album_favorite_playlist() {
 }
 
 int test_music_playlist_main() {
-	//build_story_favorite_playlist();
-	build_album_favorite_playlist();
+	build_story_favorite_playlist();
+	//build_album_favorite_playlist();
 
 	return 0;
 }

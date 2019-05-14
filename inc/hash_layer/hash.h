@@ -117,7 +117,7 @@ int del_node(const char* path, hash_node_data_t* input_node_data,
 // 遍历节点
 uint8_t traverse_nodes(const char* path, traverse_type_t traverse_type, traverse_by_what_t by_what,
 		uint32_t hash_key, printable_t print, hash_node_data_t* input_node_data,
-		traverse_action_t (*cb)(hash_node_t*, hash_node_data_t*));
+		traverse_action_t (*cb)(hash_node_data_t*, hash_node_data_t*));
 
 // 初始化哈希引擎，告知所需信息
 int init_hash_engine(const char* path, init_method_t rebuild,

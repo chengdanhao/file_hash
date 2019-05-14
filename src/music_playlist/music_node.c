@@ -46,52 +46,50 @@ int __del_music_cb(hash_node_data_t* file_node_data, hash_node_data_t* input_nod
 	return strncmp(file_music_data_value->path, input_music_data_value->path, MAX_MUSIC_PATH_LEN);
 }
 
-traverse_action_t __print_music_cb(hash_node_t* file_node, hash_node_data_t* input_node_data) {
-	music_data_value_t* music_data_value = (music_data_value_t*)(file_node->data.value);
+traverse_action_t __print_music_cb(hash_node_data_t* file_node_data, hash_node_data_t* input_node_data) {
+	music_data_value_t* music_data_value = (music_data_value_t*)(file_node_data->value);
 
-	if (file_node->used) {
-		if (MUSIC_DELETE == music_data_value->delete_or_not) {
-			printf("{ DEL : %s }", music_data_value->path);
-		} else {
-			printf("\e[7;37m%s\e[0m", music_data_value->path);
-		}
+	if (MUSIC_DELETE == music_data_value->delete_or_not) {
+		printf("{ DEL : %s }", music_data_value->path);
 	} else {
-		printf("*");
+		printf("\e[7;37m%s\e[0m", music_data_value->path);
 	}
 
 	return TRAVERSE_ACTION_DO_NOTHING;
 }
 
-traverse_action_t __reset_playlist_cb(hash_node_t* file_node, hash_node_data_t* input_node_data) {
-	music_data_value_t* file_music_data_value = (music_data_value_t*)(file_node->data.value);
+traverse_action_t __reset_playlist_cb(hash_node_data_t* file_node_data, hash_node_data_t* input_node_data) {
+	music_data_value_t* file_music_data_value = (music_data_value_t*)(file_node_data->value);
 
-	if (file_node->used) {
-		file_music_data_value->delete_or_not = MUSIC_DELETE;
-	}
+	file_music_data_value->delete_or_not = MUSIC_DELETE;
 
 	return TRAVERSE_ACTION_UPDATE;
 }
 
-traverse_action_t __clean_playlist_cb(hash_node_t* file_node, hash_node_data_t* input_node_data) {
-	music_data_value_t* file_music_data_value = (music_data_value_t*)(file_node->data.value);
+traverse_action_t __clean_playlist_cb(hash_node_data_t* file_node_data, hash_node_data_t* input_node_data) {
+	music_data_value_t* file_music_data_value = (music_data_value_t*)(file_node_data->value);
+	void *addr = NULL;	// 防止在memcpy中，文件中保存的上一次指针值覆盖了当前正在运行的指针
 
-	if (file_node->used && MUSIC_DELETE == file_music_data_value->delete_or_not) {
+	if (MUSIC_DELETE == file_music_data_value->delete_or_not) {
 		music_warn("delete %s.", file_music_data_value->path);
-		file_node->used = 0;
-		file_node->data.key = 0;
-		memset(file_node->data.value, 0, sizeof(music_data_value_t));
+
+		addr = file_node_data->value;
+		memset(file_node_data, 0, sizeof(hash_node_data_t));
+
+		file_node_data->value = addr;
+		memset(file_node_data->value, 0, sizeof(music_data_value_t));
 	}
 
 	return TRAVERSE_ACTION_UPDATE;
 }
 
 // 如果找到，返回1
-traverse_action_t __find_music_cb(hash_node_t* file_node, hash_node_data_t* input_node_data) {
+traverse_action_t __find_music_cb(hash_node_data_t* file_node_data, hash_node_data_t* input_node_data) {
 	int action = TRAVERSE_ACTION_DO_NOTHING;
-	music_data_value_t* file_music_data_value = (music_data_value_t*)(file_node->data.value);
+	music_data_value_t* file_music_data_value = (music_data_value_t*)(file_node_data->value);
 	music_data_value_t* input_music_data_value = (music_data_value_t*)(input_node_data->value);
 
-	if (file_node->used && 0 == strcmp(file_music_data_value->path, input_music_data_value->path)) {
+	if (0 == strcmp(file_music_data_value->path, input_music_data_value->path)) {
 		file_music_data_value->delete_or_not = MUSIC_KEEP;
 		action = TRAVERSE_ACTION_UPDATE | TRAVERSE_ACTION_BREAK;
 	}

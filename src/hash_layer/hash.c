@@ -1032,7 +1032,7 @@ exit:
 // traverse_type 为 TRAVERSE_ALL 时，hash_key可随意填写
 uint8_t traverse_nodes(const char* path, traverse_type_t traverse_type, traverse_by_what_t by_what,
 		uint32_t hash_key, printable_t print, hash_node_data_t* input_node_data,
-		traverse_action_t (*cb)(hash_node_t*, hash_node_data_t*)) {
+		traverse_action_t (*cb)(hash_node_data_t*, hash_node_data_t*)) {
 	traverse_action_t action = TRAVERSE_ACTION_DO_NOTHING;
 	uint8_t i = 0;
 	int fd = 0;
@@ -1135,7 +1135,12 @@ uint8_t traverse_nodes(const char* path, traverse_type_t traverse_type, traverse
 
 			if (WITH_PRINT == print) { printf("<0x%lX> ( 0x%lX : ", TRAVERSE_BY_LOGIC == by_what ? node.offsets.logic_prev : node.offsets.physic_prev, offset); }
 
-			action = cb(&node, input_node_data);
+			if (0 == node.used) {
+				if (WITH_PRINT == print) { printf("* ) <0x%lX>", TRAVERSE_BY_LOGIC == by_what ? node.offsets.logic_next : node.offsets.physic_next); }
+				goto next_loop;
+			}
+
+			action = cb(&(node.data), input_node_data);
 
 			if (WITH_PRINT == print) { printf(" ) <0x%lX>", TRAVERSE_BY_LOGIC == by_what ? node.offsets.logic_next : node.offsets.physic_next); }
 
@@ -1164,6 +1169,7 @@ uint8_t traverse_nodes(const char* path, traverse_type_t traverse_type, traverse
 				goto close_file;
 			}
 
+next_loop:
 			offset = TRAVERSE_BY_LOGIC == by_what ? node.offsets.logic_next : node.offsets.physic_next;
 		} while (offset != first_node_offset);
 
