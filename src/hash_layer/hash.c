@@ -1030,9 +1030,12 @@ exit:
 #undef DEBUG_DEL_NODE
 
 // traverse_type 为 TRAVERSE_ALL 时，hash_key可随意填写
-uint8_t traverse_nodes(const char* path, traverse_type_t traverse_type, traverse_by_what_t by_what,
+// TODO: 这个函数参数太多了，后续如果业务扩展，可以考虑用变参的方式优化
+uint8_t traverse_nodes(const char* list_path,
+		const char* download_list_path, const char* delete_list_path,
+		traverse_type_t traverse_type, traverse_by_what_t by_what,
 		uint32_t which_slot, printable_t print, hash_node_data_t* input_node_data,
-		traverse_action_t (*cb)(hash_node_data_t*, hash_node_data_t*)) {
+		traverse_action_t (*cb)(const char*, const char*, hash_node_data_t*, hash_node_data_t*)) {
 	traverse_action_t action = TRAVERSE_ACTION_DO_NOTHING;
 	uint8_t i = 0;
 	int fd = 0;
@@ -1053,8 +1056,8 @@ uint8_t traverse_nodes(const char* path, traverse_type_t traverse_type, traverse
 	memset(&header, 0, sizeof(hash_header_t));
 	memset(&node, 0, sizeof(hash_node_t));
 
-	if ((fd = open(path, O_RDWR)) < 0) {
-		hash_error("open %s fail : %s.", path, strerror(errno));
+	if ((fd = open(list_path, O_RDWR)) < 0) {
+		hash_error("open %s fail : %s.", list_path, strerror(errno));
 		goto exit;
 	}
 
@@ -1140,7 +1143,7 @@ uint8_t traverse_nodes(const char* path, traverse_type_t traverse_type, traverse
 				goto next_loop;
 			}
 
-			action = cb(&(node.data), input_node_data);
+			action = cb(download_list_path, delete_list_path, &(node.data), input_node_data);
 
 			if (WITH_PRINT == print) { printf(" ) <0x%lX>", TRAVERSE_BY_LOGIC == by_what ? node.offsets.logic_next : node.offsets.physic_next); }
 
