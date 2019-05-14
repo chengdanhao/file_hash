@@ -30,12 +30,6 @@ typedef enum {
 	TRAVERSE_BY_PHYSIC,
 } traverse_by_what_t;
 
-// 获取节点的方式，通过哈希值取得“首节点”还是通过偏移量直接定位
-typedef enum {
-	GET_NODE_BY_HASH_SLOT,
-	GET_NODE_BY_OFFSET,
-} get_node_method_t;
-
 typedef enum {
 	GENTLE_INIT,
 	FORCE_INIT,
@@ -83,7 +77,6 @@ typedef struct {
 typedef struct {
 	off_t first_logic_node_offset;	// 记录排序后第一个节点位置
 	uint32_t node_cnt;				// 记录每个槽中节点个数
-	offset_t offsets;				// 最近一次访问的节点偏移量信息
 } slot_info_t;
 
 // 记录哈希链表的一些属性，由上层填充
@@ -98,19 +91,19 @@ typedef struct {
 /*****************************************************/
 
 // 获取哈希属性
-int get_header(const char* path, hash_header_data_t* output_header_data,
-		int (*cb)(hash_header_data_t*, hash_header_data_t*));
+// 外部调用时需填充header结构体，包括其中的header.data.value内容
+int get_header_data(const char* path, hash_header_data_t* output_header);
 
 // 设置哈希属性
-int set_header(const char* path, hash_header_data_t* iutput_heade_data,
-		int (*cb)(hash_header_data_t*, hash_header_data_t*));
+// 外部调用时需填充header结构体，包括其中的header.data.value内容
+int set_header_data(const char* path, hash_header_data_t* input_header);
 
-// 获取节点信息
-int get_node(const char* path, get_node_method_t method, uint32_t hash_key,
-		off_t offset, hash_node_t* output_node, int (*cb)(hash_node_t*, hash_node_t*));
+// 获取指定偏移量节点信息
+int get_node(const char* path, const uint32_t hash_key, off_t offset, hash_node_t* output_node);
 
-int set_node(const char* path, get_node_method_t method, uint32_t hash_key,
-		off_t offset, hash_node_t* input_node, int (*cb)(hash_node_t*, hash_node_t*));
+// 修改指定偏移量节点信息
+/*int set_node(const char* path, get_node_method_t method, uint32_t hash_key,
+		off_t offset, hash_node_t* input_node, int (*cb)(hash_node_t*, hash_node_t*));*/
 
 // 添加节点
 int add_node(const char* path,

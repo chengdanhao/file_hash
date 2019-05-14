@@ -80,57 +80,62 @@ exit:
 #define write(fd, buf, count)	happy_write(__func__, __LINE__, fd, buf, count)
 #define read(fd, buf, count)	happy_read(__func__, __LINE__, fd, buf, count)
 
-int get_header(const char* path, hash_header_data_t* output_header_data,
-		int (*cb)(hash_header_data_t*, hash_header_data_t*)) {
+#define DEBUG_GET_HEADER 1
+// 外部调用时需填充header结构体，包括其中的header.data.value内容
+int get_header_data(const char* path, hash_header_data_t* output_header_data) {
 	int fd = 0;
 	int ret = -1;
 	hash_header_t header;
-	void* header_data_value = NULL;
+	uint32_t slot_cnt = 0;
 	uint32_t header_data_value_size = 0;
+	off_t header_data_value_offset = 0;
+
+	memset(&header, 0, sizeof(hash_header_t));
 
 	if ((fd = open(path, O_RDONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0) {
-		hash_error("create file %s fail : %s.", path, strerror(errno));
+		hash_error("open file %s fail : %s.", path, strerror(errno));
 		goto exit;
 	}
 
+	// 先读取头部的哈希信息
 	if (read(fd, &header, sizeof(hash_header_t)) < 0) {
 		hash_error("read header error : %s.", strerror(errno));
 		goto close_file;
 	}
 
+	slot_cnt = header.slot_cnt;
 	header_data_value_size = header.header_data_value_size;
+	header_data_value_offset = sizeof(hash_header_t) + slot_cnt * sizeof(slot_info_t);
 
-	if (header_data_value_size > 0) {
-		if (NULL == (header_data_value = (void*)calloc(1, header_data_value_size))) {
-			hash_error("calloc failed.");
-			goto exit;
+	if (header_data_value_size  > 0) {
+		if (lseek(fd, header_data_value_offset, SEEK_SET) < 0) {
+			hash_error("seek to %ld fail : %s.", header_data_value_offset, strerror(errno));
+			goto close_file;
 		}
 
-		if (read(fd, header_data_value, header_data_value_size) < 0) {
-			hash_error("read hash_header_content error : %s.", strerror(errno));
+		if (read(fd, output_header_data->value, header_data_value_size) < 0) {
+			hash_error("read output_header->value error : %s.", strerror(errno));
 			goto close_file;
 		}
 	}
-
-	header.data.value = header_data_value;
-
-	cb(&(header.data), output_header_data);
 
 close_file:
 	close(fd);
 
 exit:
-	safe_free(header_data_value);
 	return ret;
 }
+#undef DEBUG_GET_HEADER
 
-int set_header(const char* path, hash_header_data_t* input_header_data,
-		int (*cb)(hash_header_data_t*, hash_header_data_t*)) {
+#define DEBUG_SET_HEADER 1
+// 外部调用时需填充header结构体，包括其中的header.data.value内容
+int set_header_data(const char* path, hash_header_data_t* input_header_data) {
 	int fd = 0;
 	int ret = -1;
 	hash_header_t header;
+	uint32_t slot_cnt = 0;
 	uint32_t header_data_value_size = 0;
-	void *header_data_value = NULL;
+	off_t header_data_value_offset = 0;
 
 	memset(&header, 0, sizeof(hash_header_t));
 
@@ -139,61 +144,49 @@ int set_header(const char* path, hash_header_data_t* input_header_data,
 		goto exit;
 	}
 
+	// 先读取头部的哈希信息
 	if (read(fd, &header, sizeof(hash_header_t)) < 0) {
 		hash_error("read header error : %s.", strerror(errno));
 		goto close_file;
 	}
 
+	slot_cnt = header.slot_cnt;
 	header_data_value_size = header.header_data_value_size;
+	header_data_value_offset = sizeof(hash_header_t) + slot_cnt * sizeof(slot_info_t);
 
-	if (lseek(fd, 0, SEEK_SET) < 0) {
-		hash_error("seek to head fail : %s.", strerror(errno));
-		goto close_file;
-	}
+	if (header_data_value_size > 0) {
+		if (lseek(fd, header_data_value_offset, SEEK_SET) < 0) {
+			hash_error("seek to %ld fail : %s.", header_data_value_offset, strerror(errno));
+			goto close_file;
+		}
 
-	if (header_data_value_size > 0
-			&& NULL == (header_data_value = (void*)calloc(1, header_data_value_size))) {
-		hash_error("calloc failed.");
-		goto exit;
-	}
-
-	header.data.value = header_data_value;
-
-	cb(&(header.data), input_header_data);
-
-	if (write(fd, &header, sizeof(hash_header_t)) < 0) {
-		hash_error("write header error : %s.", strerror(errno));
-		goto close_file;
-	}
-
-	if (header_data_value_size > 0
-			&& write(fd, header.data.value, header_data_value_size) < 0) {
-		hash_error("write header.data.value error : %s.", strerror(errno));
-		goto close_file;
+		if (write(fd, input_header_data->value, header_data_value_size) < 0) {
+			hash_error("write input_header_data->value error : %s.", strerror(errno));
+			goto close_file;
+		}
 	}
 
 close_file:
 	close(fd);
 
 exit:
-	safe_free(header_data_value);
 	return ret;
 }
+#undef DEBUG_SET_HEADER
 
-int get_node(const char* path, get_node_method_t method, uint32_t hash_key,
-		off_t offset, hash_node_t* output_node, int (*cb)(hash_node_t*, hash_node_t*)) {
+#define DEBUG_GET_NODE 0
+int get_node(const char* path, const uint32_t hash_key, off_t offset, hash_node_t* output_node) {
 	int ret = -1;
 	int fd = 0;
-	uint32_t group = 0;
+	uint32_t which_slot = 0;
 	hash_header_t header;
-	hash_node_t node;
+	slot_info_t* slots = NULL;
 	void* node_data_value = NULL;
 	uint32_t slot_cnt = 0;
-	uint32_t header_data_value_size = 0;
 	uint32_t node_data_value_size = 0;
+	void *addr = NULL;	// 防止在memcpy中，文件中保存的上一次指针值覆盖了当前正在运行的指针
 
 	memset(&header, 0, sizeof(hash_header_t));
-	memset(&node, 0, sizeof(hash_node_t));
 
 	if ((fd = open(path, O_RDONLY)) < 0) {
 		hash_error("open file %s fail : %s.", path, strerror(errno));
@@ -207,43 +200,47 @@ int get_node(const char* path, get_node_method_t method, uint32_t hash_key,
 	}
 
 	slot_cnt = header.slot_cnt;
-	header_data_value_size = header.header_data_value_size;
 	node_data_value_size = header.node_data_value_size;
 
-	if (method == GET_NODE_BY_HASH_SLOT) {
-		group = hash_key % slot_cnt;
-		offset = (sizeof(hash_header_t) + header_data_value_size)\
-			 + group * (sizeof(hash_node_t) + node_data_value_size);
+	// 为0表示获取第一个逻辑节点地址
+	if (0 == offset) {
+		if (NULL == (slots = (void*)calloc(slot_cnt, sizeof(slot_info_t)))) {
+			hash_error("calloc failed.");
+			goto exit;
+		}
+
+		if (read(fd, slots, slot_cnt * sizeof(slot_info_t)) < 0) {
+			hash_error("read slot_info error : %s.", strerror(errno));
+			goto close_file;
+		}
+
+		header.slots = slots;
+
+		which_slot = hash_key % slot_cnt;
+		offset = header.slots[which_slot].first_logic_node_offset;
 	}
 
-	if (node_data_value_size > 0
-			&& NULL == (node_data_value = (void*)calloc(1, node_data_value_size))) {
-		hash_error("calloc failed.");
-		goto exit;
-	}
-
-	// 定位到指定的偏移量处
 	if (lseek(fd, offset, SEEK_SET) < 0) {
 		hash_error("seek to %ld fail : %s.", offset, strerror(errno));
 		goto close_file;
 	}
 
-	if (read(fd, &node, sizeof(hash_node_t)) < 0) {
+	addr = output_node->data.value;
+	if (read(fd, output_node, sizeof(hash_node_t)) < 0) {
 		hash_error("read node failed : %s.", strerror(errno));
 		goto close_file;
 	}
 
+#if DEBUG_GET_NODE
+	hash_debug("0x%lX <- 0x%lX -> 0x%lX.", output_node->offsets.logic_prev, offset, output_node->offsets.logic_next);
+#endif
+
+	output_node->data.value = addr;
 	if (node_data_value_size > 0
-			&& read(fd, node_data_value, node_data_value_size) < 0) {
+			&& read(fd, output_node->data.value, node_data_value_size) < 0) {
 		hash_error("read node_data_value failed : %s.", strerror(errno));
 		goto close_file;
 	}
-
-	// 建立关联，方便后面使用。之后不要破坏这种关联（比如read调用）
-	node.data.value = node_data_value;
-
-	// 在回调函数中可以返回上/下一首歌曲的偏移量
-	cb(&node, output_node);
 
 	ret = 0;
 
@@ -251,10 +248,15 @@ close_file:
 	close(fd);
 
 exit:
+	safe_free(slots);
 	safe_free(node_data_value);
 	return ret;
-}
 
+}
+#undef DEBUG_GET_NODE
+
+#if 0
+#define DEBUG_SET_NODE
 int set_node(const char* path, get_node_method_t method, uint32_t hash_key,
 		off_t offset, hash_node_t* input_node, int (*cb)(hash_node_t*, hash_node_t*)) {
 	int ret = -1;
@@ -337,8 +339,9 @@ exit:
 	safe_free(node.data.value);
 	return ret;
 }
-
-#define MORE_ADD_NODE_INFO 0
+#undef DEBUG_SET_NODE
+#endif
+#define DEBUG_ADD_NODE 0
 int add_node(const char* path,
 		hash_node_data_t* input_prev_node_data, hash_node_data_t* input_curr_node_data,
 		int (*cb)(hash_node_data_t*, hash_node_data_t*)) {
@@ -355,7 +358,6 @@ int add_node(const char* path,
 	off_t new_physic_node_offset = 0;
 	hash_header_t header;
 	slot_info_t* slots = NULL;
-	slot_info_t slot_info;
 	hash_node_t first_physic_node;
 	hash_node_t curr_physic_node;
 	hash_node_t prev_logic_node;
@@ -367,7 +369,6 @@ int add_node(const char* path,
 	void *addr = NULL;	// 防止在memcpy中，文件中保存的上一次指针值覆盖了当前正在运行的指针
 
 	memset(&header, 0, sizeof(hash_header_t));
-	memset(&slot_info, 0, sizeof(slot_info));
 	memset(&first_physic_node, 0, sizeof(hash_node_t));
 	memset(&curr_physic_node, 0, sizeof(hash_node_t));
 	memset(&prev_logic_node, 0, sizeof(hash_node_t));
@@ -404,7 +405,7 @@ int add_node(const char* path,
 	which_slot = input_curr_node_data->key % slot_cnt;
 	first_physic_node_offset = sizeof(hash_header_t) + slot_cnt * sizeof(slot_info_t) + header_data_value_size\
 		 + which_slot * (sizeof(hash_node_t) + node_data_value_size);
-	first_logic_node_offset = slots[which_slot].first_logic_node_offset;
+	first_logic_node_offset = header.slots[which_slot].first_logic_node_offset;
 
 	if (node_data_value_size > 0
 			&& NULL == (node_data_value = (void*)calloc(1, node_data_value_size))) {
@@ -496,7 +497,7 @@ int add_node(const char* path,
 				find_prev_node = true;
 				prev_logic_node = curr_physic_node;
 				prev_logic_node_offset = physic_offset;
-#if MORE_ADD_NODE_INFO
+#if DEBUG_ADD_NODE
 				hash_debug("prev node at 0x%lX.", prev_logic_node_offset);
 #endif
 				break;
@@ -509,7 +510,7 @@ next_loop:
 
 	if (true == is_first_node) {
 		header.slots[which_slot].node_cnt = 0;
-#if MORE_ADD_NODE_INFO
+#if DEBUG_ADD_NODE
 		hash_debug("finish clear list.");
 #endif
 	} else if (false == find_prev_node) {
@@ -561,7 +562,7 @@ next_loop:
 			if (0 == curr_physic_node.used
 					&& first_physic_node_offset == curr_physic_node.offsets.physic_next
 					&& first_physic_node_offset == curr_physic_node.offsets.physic_prev) {
-#if MORE_ADD_NODE_INFO
+#if DEBUG_ADD_NODE
 				hash_debug("(FIRST) <0x%lX> (0x%lX : %d) <0x%lX>",
 						curr_physic_node.offsets.physic_prev, physic_offset, input_curr_node_data->key, curr_physic_node.offsets.physic_next);
 #endif
@@ -571,7 +572,7 @@ next_loop:
 
 			// 0 1, 被清空过的节点
 			else if (0 == curr_physic_node.used) {
-#if MORE_ADD_NODE_INFO
+#if DEBUG_ADD_NODE
 				hash_debug(" (USED) <0x%lX> (0x%lX : %d) <0x%lX>",
 						curr_physic_node.offsets.physic_prev, physic_offset, input_curr_node_data->key, curr_physic_node.offsets.physic_next);
 #endif
@@ -625,7 +626,7 @@ next_loop:
 				curr_physic_node.offsets.physic_next = first_physic_node_offset;
 				/**** 3. END 修改 新 节点的prev和next指针 ****/
 
-#if MORE_ADD_NODE_INFO
+#if DEBUG_ADD_NODE
 				hash_debug(" (TAIL) <0x%lX> (0x%lX : %d) <0x%lX>",
 						curr_physic_node.offsets.physic_prev, new_physic_node_offset, input_curr_node_data->key, curr_physic_node.offsets.physic_next);
 #endif
@@ -647,7 +648,7 @@ next_loop:
 			if (true == is_first_node) {
 				header.slots[which_slot].first_logic_node_offset = physic_offset;
 				curr_physic_node.offsets.logic_prev = curr_physic_node.offsets.logic_next = new_physic_node_offset;
-#if MORE_ADD_NODE_INFO
+#if DEBUG_ADD_NODE
 				hash_debug("first node offset 0x%lX.", new_physic_node_offset);
 #endif
 			} else {
@@ -660,7 +661,7 @@ next_loop:
 				 */
 
 				/* START 4.1. 读取 next prev 节点操作 */
-#if MORE_ADD_NODE_INFO
+#if DEBUG_ADD_NODE
 				hash_debug("new node 0x%lX inset behind 0x%lX, before add 0x%lX <- 0x%lX -> 0x%lX.",
 						new_physic_node_offset, prev_logic_node_offset,
 						prev_logic_node.offsets.logic_prev, prev_logic_node_offset, prev_logic_node.offsets.logic_next);
@@ -704,7 +705,7 @@ next_loop:
 				curr_physic_node.offsets.logic_prev = prev_logic_node_offset;
 				/* END 4.2. 重新建立节点链接 */
 
-#if MORE_ADD_NODE_INFO
+#if DEBUG_ADD_NODE
 				hash_debug("prevNode : 0x%lX <- (0x%lX) -> 0x%lX",
 						prev_logic_node.offsets.logic_prev, prev_logic_node_offset, prev_logic_node.offsets.logic_next);
 
@@ -788,9 +789,9 @@ exit:
 	safe_free(node_data_value);
 	return ret;
 }
-#undef MORE_ADD_NODE_INFO
+#undef DEBUG_ADD_NODE
 
-#define MORE_DEL_NODE_INFO 0
+#define DEBUG_DEL_NODE 0
 int del_node(const char* path, hash_node_data_t* input_node_data,
 		int (*cb)(hash_node_data_t*, hash_node_data_t*)) {
 	int ret = -1;
@@ -914,20 +915,20 @@ int del_node(const char* path, hash_node_data_t* input_node_data,
 				goto clear_node;
 			} else {
 				if (offset == first_logic_node_offset) {	// 删除逻辑第一个节点
-#if MORE_DEL_NODE_INFO
+#if DEBUG_DEL_NODE
 					hash_debug("delete first logic node 0x%lX, update first logic node to 0x%lX.",
 							offset, node.offsets.logic_next);
 #endif
 					header.slots[which_slot].first_logic_node_offset = node.offsets.logic_next;
 				} else {
-#if MORE_DEL_NODE_INFO
+#if DEBUG_DEL_NODE
 					hash_debug("delete normal node 0x%lX.", offset);
 #endif
 				}
 
 				// 剩两个节点
 				if (prev_logic_node_offset == next_logic_node_offset) {
-#if MORE_DEL_NODE_INFO
+#if DEBUG_DEL_NODE
 					hash_debug("2 nodes left.");
 #endif
 					prev_logic_node.offsets.logic_prev = prev_logic_node_offset;
@@ -942,7 +943,7 @@ int del_node(const char* path, hash_node_data_t* input_node_data,
 			}
 
 			/* END 2. 修改节点链式关系 */
-#if MORE_DEL_NODE_INFO
+#if DEBUG_DEL_NODE
 			hash_info("after del 0x%lX, prev = ( 0x%lX <- 0x%lX -> 0x%lX ), next = ( 0x%lX <- 0x%lX -> 0x%lX ).", offset,
 					prev_logic_node.offsets.logic_prev, prev_logic_node_offset, prev_logic_node.offsets.logic_next,
 					next_logic_node.offsets.logic_prev, next_logic_node_offset, next_logic_node.offsets.logic_next);
@@ -1025,7 +1026,7 @@ exit:
 	safe_free(node_data_value);
 	return ret;
 }
-#undef MORE_DEL_NODE_INFO
+#undef DEBUG_DEL_NODE
 
 // traverse_type 为 TRAVERSE_ALL 时，hash_key可随意填写
 uint8_t traverse_nodes(const char* path, traverse_type_t traverse_type, traverse_by_what_t by_what,

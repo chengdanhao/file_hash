@@ -27,6 +27,8 @@ typedef enum {
 } action_t;
 
 typedef struct {
+	off_t prev;			// 记录当前节点的上一首，方便上下首切歌
+	off_t next;
 	off_t saved_offset;	// 记录上一次播放记录
 	char name[MAX_PLAYLIST_NAME_LEN];
 } playlist_t;
@@ -63,12 +65,6 @@ void _clean_playlist(const char* playlist_path, uint32_t hash_key);
 void _reset_playlist(const char* playlist_path, uint32_t hash_key);
 /********************/
 
-// 获取播放列表属性，该属性存放在hash_header_t中
-void _get_playlist_header(const char* func, const int line, const char* playlist_path, playlist_header_data_value_t* header_data_value);
-
-// 设置播放列表属性，该属性存放在hash_header_t中
-void _set_playlist_header(const char* func, const int line, const char* playlist_path, playlist_header_data_value_t* header_data_value);
-
 int _init_playlist_hash_engine(const char* path, uint32_t slot_cnt);
 
 #define _get_prev_music(playlist_path, hash_key) _get_music(playlist_path, hash_key, PREV_MUSIC)
@@ -82,28 +78,19 @@ int _init_playlist_hash_engine(const char* path, uint32_t slot_cnt);
 #define del_story_music(hash_key, music_path)         _del_music(STORY_PLAYLIST_PATH, hash_key, music_path)
 #define show_story_playlist()                         _show_playlist(STORY_PLAYLIST_PATH)
 
-#define clean_story_playlist(hash_key)                _clean_playlist(STORY_PLAYLIST_PATH, hash_key)
-#define reset_story_playlist(hash_key)                _reset_playlist(STORY_PLAYLIST_PATH, hash_key)
-
-#define get_story_playlist_header(header_data_value)  _get_playlist_header(__func__, __LINE__, STORY_PLAYLIST_PATH, header_data_value)
-#define set_story_playlist_header(header_data_value)  _set_playlist_header(__func__, __LINE__, STORY_PLAYLIST_PATH, header_data_value)
-
 #define init_story_playlist_hash_engine()             _init_playlist_hash_engine(STORY_PLAYLIST_PATH, STORY_SLOT_CNT)
 /*******************************************************************/
 
 /********************** 专辑收藏 调用这些函数 **********************/
+#define get_album_playlist_header(path, header_data_value)  _get_playlist_header(ALBUM_PLAYLIST_PATH, header_data_value)
+#define set_album_playlist_header(path, header_data_value)  _set_playlist_header(ALBUM_PLAYLIST_PATH, header_data_value)
+
 #define get_album_prev_music(hash_key)                _get_prev_music(ALBUM_PLAYLIST_PATH, hash_key)
 #define get_album_next_music(hash_key)                _get_next_music(ALBUM_PLAYLIST_PATH, hash_key)
 
 #define add_album_music(hash_key, prev_music_data_value, curr_music_data_value)         _add_music(ALBUM_PLAYLIST_PATH, hash_key, prev_music_data_value, curr_music_data_value)
 #define del_album_music(hash_key, music_data_value)         _del_music(ALBUM_PLAYLIST_PATH, hash_key, music_data_value)
 #define show_album_playlist()                         _show_playlist(ALBUM_PLAYLIST_PATH)
-
-#define clean_album_playlist(hash_key)                _clean_playlist(ALBUM_PLAYLIST_PATH, hash_key)
-#define reset_album_playlist(hash_key)                _reset_playlist(ALBUM_PLAYLIST_PATH, hash_key)
-
-#define get_album_playlist_header(header_data_value)  _get_playlist_header(__func__, __LINE__, ALBUM_PLAYLIST_PATH, header_data_value)
-#define set_album_playlist_header(header_data_value)  _set_playlist_header(__func__, __LINE__, ALBUM_PLAYLIST_PATH, header_data_value)
 
 #define init_album_playlist_hash_engine()             _init_playlist_hash_engine(ALBUM_PLAYLIST_PATH, ALBUM_SLOT_CNT)
 /*******************************************************************/
