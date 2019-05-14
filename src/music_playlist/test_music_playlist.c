@@ -2,6 +2,91 @@
 #include <string.h>
 #include "music_node.h"
 
+void diff_story_playlist(uint32_t which_slot) {
+#define TEST_CASE 3
+	const char* playlist_1[] = {
+		"AAA",
+		"BBB",
+		"CCC",
+		"DDD",
+	};
+
+#if (TEST_CASE == 1)
+	const char* playlist_2[] = {
+		"CCC",
+		"DDD",
+		"EEE",
+		"FFF",
+	};
+#elif (TEST_CASE == 2)
+	const char* playlist_2[] = {
+		"EEE",
+		"FFF",
+	};
+#elif (TEST_CASE == 3)
+	const char* playlist_2[] = {
+		"BBB",
+		"EEE",
+		"FFF",
+	};
+#endif
+
+	off_t offset = 0;
+	hash_node_t prev_node;
+	music_data_value_t prev_music_data_value;
+	music_data_value_t curr_music_data_value;
+
+	memset(&prev_node, 0, sizeof(hash_node_t));
+	memset(&prev_music_data_value, 0, sizeof(music_data_value_t));
+	memset(&curr_music_data_value, 0, sizeof(music_data_value_t));
+
+	init_story_playlist_hash_engine();
+
+	// 普通添加时 curr_music 的 delete_or_not 标记是 MUSIC_KEEP
+	strncpy(prev_music_data_value.path, DUMMY_MUSIC_PATH, sizeof(prev_music_data_value.path));
+	for (int i = 0; i < sizeof(playlist_1) / sizeof(char*); i++) {
+		curr_music_data_value.delete_or_not = MUSIC_KEEP;
+		strncpy(curr_music_data_value.path, playlist_1[i], sizeof(curr_music_data_value.path));
+		add_story_music(which_slot, &prev_music_data_value, &curr_music_data_value);
+		prev_music_data_value = curr_music_data_value;
+	}
+
+	printf("-- 原始故事列表 ---------------------------------------\n");
+	show_story_playlist();
+	printf("----------------------------------------------------------\n");
+
+	// 里面会把将节点的 delete_or_not 标记是 MUSIC_TO_BE_DELETE
+	_pre_diff_story_playlist(0);
+
+	prev_node.data.value = &prev_music_data_value;
+
+	// 将新链表链接到头节点开头
+	get_node(STORY_PLAYLIST_PATH, which_slot, offset, &prev_node);
+
+	/* 将新列表中的歌插入老链表，并将节点delete_or_not标记设置为MUSIC_TO_BE_DOWNLOAD。
+	 * 在add_music时，如果已存在的节点，会将delete_or_not标记设置为MUSIC_KEEP
+	 * 因此循环体执行完后，MUSIC_TO_BE_DELETE, MUSIC_TO_BE_DOWNLOAD, MUSIC_KEEP
+	 * 都会在分别标记出来
+	 */
+	strncpy(prev_music_data_value.path, DUMMY_MUSIC_PATH, sizeof(prev_music_data_value.path));
+	for (int i = 0; i < sizeof(playlist_2) / sizeof(char*); i++) {
+		curr_music_data_value.delete_or_not = MUSIC_TO_BE_DOWNLOAD;
+		strncpy(curr_music_data_value.path, playlist_2[i], sizeof(curr_music_data_value.path));
+		add_story_music(playlist_2[i][0], &prev_music_data_value, &curr_music_data_value);
+		prev_music_data_value = curr_music_data_value;
+	}
+
+	printf("-- diff ---------------------------------------\n");
+	show_story_playlist();
+	printf("----------------------------------------------------------\n");
+
+	_post_diff_story_playlist(0);
+
+	printf("-- post-diff ---------------------------------------\n");
+	show_story_playlist();
+	printf("----------------------------------------------------------\n");
+}
+
 void build_story_favorite_playlist() {
 	const char* playlist_1[] = {
 		"AAA",
@@ -53,11 +138,9 @@ void build_story_favorite_playlist() {
 
 	music_data_value_t prev_music_data_value;
 	music_data_value_t curr_music_data_value;
-	playlist_header_data_value_t playlist_header;
 
 	memset(&prev_music_data_value, 0, sizeof(prev_music_data_value));
 	memset(&curr_music_data_value, 0, sizeof(curr_music_data_value));
-	memset(&playlist_header, 0, sizeof(playlist_header));
 
 	init_story_playlist_hash_engine();
 
@@ -323,7 +406,8 @@ void build_album_favorite_playlist() {
 }
 
 int test_music_playlist_main() {
-	build_story_favorite_playlist();
+	diff_story_playlist(0);
+	//build_story_favorite_playlist();
 	//build_album_favorite_playlist();
 
 	return 0;

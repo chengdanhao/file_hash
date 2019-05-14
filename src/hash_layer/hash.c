@@ -1031,7 +1031,7 @@ exit:
 
 // traverse_type 为 TRAVERSE_ALL 时，hash_key可随意填写
 uint8_t traverse_nodes(const char* path, traverse_type_t traverse_type, traverse_by_what_t by_what,
-		uint32_t hash_key, printable_t print, hash_node_data_t* input_node_data,
+		uint32_t which_slot, printable_t print, hash_node_data_t* input_node_data,
 		traverse_action_t (*cb)(hash_node_data_t*, hash_node_data_t*)) {
 	traverse_action_t action = TRAVERSE_ACTION_DO_NOTHING;
 	uint8_t i = 0;
@@ -1095,7 +1095,7 @@ uint8_t traverse_nodes(const char* path, traverse_type_t traverse_type, traverse
 		s_first_node = 1;
 
 		// TODO: hash_key和i的关系不一定可以直接比较，后续版本需要完善
-		if (TRAVERSE_SPECIFIC_HASH_SLOT == traverse_type && i != (hash_key % slot_cnt)) {
+		if (TRAVERSE_SPECIFIC_HASH_SLOT == traverse_type && i != (which_slot % slot_cnt)) {
 			continue;
 		}
 
