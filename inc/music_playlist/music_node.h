@@ -77,8 +77,6 @@ int _init_music_hash_engine(const char* path, uint32_t slot_cnt);
 #define show_story_download_list() _show_playlist(STORY_DOWNLOAD_LIST_PATH)
 #define show_story_delete_list() _show_playlist(STORY_DELETE_LIST_PATH)
 
-#define clean_story_playlist() _clean_playlist(STORY_PLAYLIST_PATH, STORY_DOWNLOAD_LIST_PATH)
-
 #define pre_diff_story_playlist() _pre_diff_playlist(STORY_PLAYLIST_PATH, 0)
 #define post_diff_story_playlist() _post_diff_playlist(STORY_PLAYLIST_PATH, STORY_DOWNLOAD_LIST_PATH, STORY_DELETE_LIST_PATH, 0)
 
@@ -105,8 +103,6 @@ int _init_music_hash_engine(const char* path, uint32_t slot_cnt);
 #define show_album_playlist() _show_playlist(ALBUM_PLAYLIST_PATH)
 #define show_album_download_list() _show_playlist(ALBUM_DOWNLOAD_LIST_PATH)
 #define show_album_delete_list() _show_playlist(ALBUM_DELETE_LIST_PATH)
-
-#define clean_album_playlist() _clean_playlist(ALBUM_PLAYLIST_PATH, ALBUM_DOWNLOAD_LIST_PATH)
 
 #define pre_diff_album_playlist(which_slot) _pre_diff_playlist(ALBUM_PLAYLIST_PATH, which_slot)
 #define post_diff_album_playlist(which_slot) _post_diff_playlist(ALBUM_PLAYLIST_PATH, ALBUM_DOWNLOAD_LIST_PATH, ALBUM_DELETE_LIST_PATH, which_slot)

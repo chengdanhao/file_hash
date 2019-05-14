@@ -90,16 +90,8 @@ void diff_story_playlist() {
 	show_story_playlist();
 	printf("----------------------------------------------------------\n");
 
-	show_story_download_list();
 	show_story_delete_list();
-
-	printf("----------------------------------------------------------\n");
-
-	clean_story_playlist();
-
-	printf("-- 完成所有操作后 ---------------------------------------\n");
-	show_story_playlist();
-	printf("----------------------------------------------------------\n");
+	show_story_download_list();
 }
 
 void build_story_favorite_playlist() {
