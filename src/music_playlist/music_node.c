@@ -33,7 +33,8 @@
 #endif
 
 #define DEBUG_LIST 1
-traverse_action_t __show_playlist_cb(const char* download_list_path, const char* delete_list_path,
+traverse_action_t __show_playlist_cb(const char* list_path,
+		const char* download_list_path, const char* delete_list_path,
 		hash_node_data_t* file_node_data, hash_node_data_t* input_node_data) {
 	music_data_value_t* music_data_value = (music_data_value_t*)(file_node_data->value);
 
@@ -52,7 +53,20 @@ traverse_action_t __show_playlist_cb(const char* download_list_path, const char*
 }
 #undef DEBUG_LIST
 
-traverse_action_t __pre_diff_playlist_cb(const char* download_list_path, const char* delete_list_path,
+traverse_action_t __clean_playlist_cb(const char* list_path,
+		const char* download_list_path, const char* delete_list_path,
+		hash_node_data_t* file_node_data, hash_node_data_t* input_node_data) {
+	music_data_value_t* music_data_value = (music_data_value_t*)(file_node_data->value);
+
+	_del_music(delete_list_path, music_data_value->which_slot, music_data_value->path);
+
+	// TODO:删除文件
+
+	return TRAVERSE_ACTION_DO_NOTHING;
+}
+
+traverse_action_t __pre_diff_playlist_cb(const char* list_path,
+		const char* download_list_path, const char* delete_list_path,
 		hash_node_data_t* file_node_data, hash_node_data_t* input_node_data) {
 	music_data_value_t* file_music_data_value = (music_data_value_t*)(file_node_data->value);
 
@@ -61,7 +75,8 @@ traverse_action_t __pre_diff_playlist_cb(const char* download_list_path, const c
 	return TRAVERSE_ACTION_UPDATE;
 }
 
-traverse_action_t __post_diff_playlist_cb(const char* download_list_path, const char* delete_list_path,
+traverse_action_t __post_diff_playlist_cb(const char* list_path,
+		const char* download_list_path, const char* delete_list_path,
 		hash_node_data_t* file_node_data, hash_node_data_t* input_node_data) {
 	music_data_value_t* file_music_data_value = (music_data_value_t*)(file_node_data->value);
 
@@ -93,7 +108,8 @@ traverse_action_t __post_diff_playlist_cb(const char* download_list_path, const 
 }
 
 // 找到节点后，会将节点标记为MUSIC_KEEP
-traverse_action_t __find_music_cb(const char* download_list_path, const char* delete_list_path,
+traverse_action_t __find_music_cb(const char* list_path,
+		const char* download_list_path, const char* delete_list_path,
 		hash_node_data_t* file_node_data, hash_node_data_t* input_node_data) {
 	int action = TRAVERSE_ACTION_DO_NOTHING;
 	music_data_value_t* file_music_data_value = (music_data_value_t*)(file_node_data->value);
@@ -122,9 +138,14 @@ int __del_music_cb(hash_node_data_t* file_node_data, hash_node_data_t* input_nod
 }
 
 void _show_playlist(const char* list_path) {
-	//traverse_nodes(list_path, TRAVERSE_ALL, TRAVERSE_BY_PHYSIC, 0, WITH_PRINT, NULL, __print_music_cb);
 	traverse_nodes(list_path, NULL, NULL, TRAVERSE_ALL, TRAVERSE_BY_LOGIC,
 			0, WITH_PRINT, NULL, __show_playlist_cb);
+}
+
+// 根据删除列表的功能删除节点和文件
+void _clean_playlist(const char* list_path, const char* delete_list_path) {
+	traverse_nodes(delete_list_path, NULL, list_path, TRAVERSE_ALL, TRAVERSE_BY_LOGIC,
+			0, WITHOUT_PRINT, NULL, __clean_playlist_cb);
 }
 
 // 将music的delete_or_not标记设置为MUSIC_DELETE
@@ -151,7 +172,6 @@ int _get_first_node(const char* list_path, music_data_value_t* music_data_value)
 
 	return get_node(list_path, 0, 0, &prev_node);
 }
-
 
 uint8_t _find_music(const char* list_path, uint32_t which_slot, const char* music_path) {
 	hash_node_data_t node_data;
