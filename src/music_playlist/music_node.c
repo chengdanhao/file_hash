@@ -277,6 +277,7 @@ int _add_music(const char* playlist_path, uint32_t which_slot,
 
 	// 第一个节点
 	if (0 == strcmp(DUMMY_MUSIC_PATH, prev_music_data_value->path)) {
+		music_debug("add first node : %s.", curr_music_data_value->path);
 		curr_node_data.is_first_node = true;
 	}
 

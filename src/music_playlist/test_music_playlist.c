@@ -3,7 +3,7 @@
 #include "music_node.h"
 
 void diff_story_playlist(uint32_t which_slot) {
-#define TEST_CASE 3
+#define TEST_CASE 2
 	const char* playlist_1[] = {
 		"AAA",
 		"BBB",
@@ -68,7 +68,8 @@ void diff_story_playlist(uint32_t which_slot) {
 	 * 因此循环体执行完后，MUSIC_TO_BE_DELETE, MUSIC_TO_BE_DOWNLOAD, MUSIC_KEEP
 	 * 都会在分别标记出来
 	 */
-	strncpy(prev_music_data_value.path, DUMMY_MUSIC_PATH, sizeof(prev_music_data_value.path));
+	char *path = ((music_data_value_t*)(prev_node.data.value))->path;
+	strncpy(prev_music_data_value.path, path, sizeof(prev_music_data_value.path));
 	for (int i = 0; i < sizeof(playlist_2) / sizeof(char*); i++) {
 		curr_music_data_value.delete_or_not = MUSIC_TO_BE_DOWNLOAD;
 		strncpy(curr_music_data_value.path, playlist_2[i], sizeof(curr_music_data_value.path));
