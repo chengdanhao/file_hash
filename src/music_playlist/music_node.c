@@ -351,18 +351,22 @@ int _del_music(const char* list_path, uint32_t which_slot, const char* path) {
 	int ret = -1;
 	hash_node_data_t node_data;
 	music_data_value_t music_data_value;
+	playlist_header_data_value_t playlist_header;
 
 	memset(&node_data, 0, sizeof(node_data));
 	memset(&music_data_value, 0, sizeof(music_data_value));
+	memset(&playlist_header, 0, sizeof(playlist_header));
+
+	_get_playlist_header(__func__, __LINE__, list_path, &playlist_header);
 
 	music_data_value.delete_or_not = MUSIC_TO_BE_DELETE;
 	strncpy(music_data_value.path, path, MAX_MUSIC_PATH_LEN);
 
-	node_data.key = which_slot;
+	node_data.key = which_slot % playlist_header.playlist_cnt;
 	node_data.value = &music_data_value;
 
 	if (0 != (ret = del_node(list_path, &node_data, __del_music_cb))) {
-		music_error("del failed : %s.", path);
+		music_error("del failed %s in slot %d.", path, node_data.key);
 		goto exit;
 	}
 
