@@ -434,9 +434,9 @@ void build_album_favorite_playlist() {
 }
 
 int test_music_playlist_main() {
-	//diff_story_playlist();
+	diff_story_playlist();
 	build_story_favorite_playlist();
-	//build_album_favorite_playlist();
+	build_album_favorite_playlist();
 
 	return 0;
 }

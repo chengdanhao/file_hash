@@ -161,7 +161,7 @@ int get_header_data(const char* path, hash_header_data_t* output_header_data) {
 	header_data_value_size = header.header_data_value_size;
 	header_data_value_offset = sizeof(hash_header_t) + slot_cnt * sizeof(slot_info_t);
 
-	if (header_data_value_size  > 0) {
+	if (header_data_value_size > 0) {
 		if (lseek(fd, header_data_value_offset, SEEK_SET) < 0) {
 			hash_error("seek to %ld fail : %s.", header_data_value_offset, strerror(errno));
 			goto close_file;
@@ -292,7 +292,7 @@ int get_node(const char* path, const uint32_t hash_key, off_t offset, hash_node_
 	output_node->data.value = addr;
 	if (node_data_value_size > 0
 			&& read(fd, output_node->data.value, node_data_value_size) < 0) {
-		hash_error("read node_data_value failed : %s.", strerror(errno));
+		hash_error("read output_node->data.value failed : %s.", strerror(errno));
 		goto close_file;
 	}
 
@@ -305,7 +305,6 @@ exit:
 	safe_free(slots);
 	safe_free(node_data_value);
 	return ret;
-
 }
 #undef DEBUG_GET_NODE
 
@@ -572,7 +571,7 @@ next_loop:
 
 
 				if (read(fd, &first_physic_node, sizeof(hash_node_t)) < 0) {
-					hash_error("read curr_physic_node error : %s.", strerror(errno));
+					hash_error("read first_physic_node error : %s.", strerror(errno));
 					goto close_file;
 				}
 
@@ -582,7 +581,7 @@ next_loop:
 				lseek(fd, first_physic_node_offset, SEEK_SET);
 
 				if (write(fd, &first_physic_node, sizeof(hash_node_t)) < 0) {
-					hash_error("write curr_physic_node error : %s.", strerror(errno));
+					hash_error("write first_physic_node error : %s.", strerror(errno));
 					goto close_file;
 				}
 				/**** 2. END 修改 头 节点的prev_offset值，指向新节点 ****/
@@ -649,7 +648,7 @@ next_loop:
 				// next 节点。如果prev和next相等，说明当前只有一个节点，后面会有多个这种判断
 				if (prev_logic_node_offset != (next_logic_node_offset = prev_logic_node.offsets.logic_next)) {
 					if (lseek(fd, next_logic_node_offset, SEEK_SET) < 0) {
-						hash_error("seek to %ld fail : %s.", physic_offset, strerror(errno));
+						hash_error("seek to %ld fail : %s.", next_logic_node_offset, strerror(errno));
 						goto close_file;
 					}
 
@@ -688,12 +687,12 @@ next_loop:
 #endif
 				/* START 4.3. 写回到文件 */
 				if (lseek(fd, prev_logic_node_offset, SEEK_SET) < 0) {
-					hash_error("seek to %ld fail : %s.", physic_offset, strerror(errno));
+					hash_error("seek to %ld fail : %s.", prev_logic_node_offset, strerror(errno));
 					goto close_file;
 				}
 
 				if (write(fd, &prev_logic_node, sizeof(hash_node_t)) < 0) {
-					hash_error("write next_logic_node error : %s.", strerror(errno));
+					hash_error("write prev_logic_node error : %s.", strerror(errno));
 					goto close_file;
 				}
 
@@ -725,7 +724,7 @@ next_loop:
 
 			if (node_data_value_size > 0
 					&& write(fd, curr_physic_node.data.value, node_data_value_size) < 0) {
-				hash_error("write node_data_value error : %s.", strerror(errno));
+				hash_error("write curr_physic_node.data.value error : %s.", strerror(errno));
 				goto close_file;
 			}
 			/**** 4. END 写入新节点的其他信息 ****/
@@ -858,7 +857,7 @@ int del_node(const char* path, hash_node_data_t* input_node_data,
 			}
 
 			if (read(fd, &prev_logic_node, sizeof(hash_node_t)) < 0) {
-				hash_error("read next_logic_node error : %s.", strerror(errno));
+				hash_error("read prev_logic_node error : %s.", strerror(errno));
 				goto close_file;
 			}
 
@@ -923,7 +922,7 @@ int del_node(const char* path, hash_node_data_t* input_node_data,
 			}
 
 			if (write(fd, &prev_logic_node, sizeof(hash_node_t)) < 0) {
-				hash_error("write next_logic_node error : %s.", strerror(errno));
+				hash_error("write prev_logic_node error : %s.", strerror(errno));
 				goto close_file;
 			}
 
@@ -1117,14 +1116,13 @@ uint8_t traverse_nodes(const char* list_path,
 				}
 
 				if (write(fd, &node, sizeof(hash_node_t)) < 0) {
-					hash_error("del node error : %s.", strerror(errno));
-					perror("delete");
+					hash_error("write node error : %s.", strerror(errno));
 					goto close_file;
 				}
 
 				if (node_data_value_size > 0
 						&& write(fd, node.data.value, node_data_value_size) < 0) {
-					hash_error("del node_data_value error : %s.", strerror(errno));
+					hash_error("write node.data.value error : %s.", strerror(errno));
 					goto close_file;
 				}
 			}
