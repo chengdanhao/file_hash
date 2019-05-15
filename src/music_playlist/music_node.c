@@ -138,13 +138,13 @@ int __del_music_cb(hash_node_data_t* file_node_data, hash_node_data_t* input_nod
 }
 
 void _show_playlist(const char* list_path) {
-	traverse_nodes(list_path, NULL, NULL, TRAVERSE_ALL, TRAVERSE_BY_LOGIC,
-			0, WITH_PRINT, NULL, __show_playlist_cb);
+	traverse_nodes(list_path, NULL, NULL, TRAVERSE_BY_LOGIC,
+			MAX_PLAYLIST_CNT, WITH_PRINT, NULL, __show_playlist_cb);
 }
 
 // 将music的delete_or_not标记设置为MUSIC_DELETE
 void _pre_diff_playlist(const char* list_path, uint32_t which_slot) {
-	traverse_nodes(list_path, NULL, NULL, TRAVERSE_SPECIFIC_HASH_SLOT, TRAVERSE_BY_LOGIC,
+	traverse_nodes(list_path, NULL, NULL, TRAVERSE_BY_LOGIC,
 			which_slot, WITHOUT_PRINT, NULL, __pre_diff_playlist_cb);
 }
 
@@ -155,12 +155,12 @@ void _post_diff_playlist(const char* list_path,
 	music_info("download_list = %s, delete_list = %s.", download_list_path, delete_list_path);
 
 	// 生成链表
-	traverse_nodes(list_path, download_list_path, delete_list_path, TRAVERSE_SPECIFIC_HASH_SLOT, TRAVERSE_BY_LOGIC,
+	traverse_nodes(list_path, download_list_path, delete_list_path, TRAVERSE_BY_LOGIC,
 			which_slot, WITHOUT_PRINT, NULL, __build_download_and_delete_list_cb);
 
 	// 根据删除列表的功能删除节点和文件
-	traverse_nodes(delete_list_path, NULL, list_path, TRAVERSE_ALL, TRAVERSE_BY_LOGIC,
-			which_slot, WITHOUT_PRINT, NULL, __clean_playlist_cb);
+	traverse_nodes(delete_list_path, NULL, list_path, TRAVERSE_BY_LOGIC,
+			MAX_PLAYLIST_CNT, WITHOUT_PRINT, NULL, __clean_playlist_cb);
 }
 
 int _get_playlist_music_cnt(const char* list_path, uint32_t which_slot) {
@@ -189,7 +189,7 @@ uint8_t _find_music(const char* list_path, uint32_t which_slot, const char* musi
 	node_data.key = which_slot;
 	node_data.value = &music_data_value;
 
-	return traverse_nodes(list_path, NULL, NULL, TRAVERSE_SPECIFIC_HASH_SLOT, TRAVERSE_BY_PHYSIC,
+	return traverse_nodes(list_path, NULL, NULL, TRAVERSE_BY_PHYSIC,
 			which_slot, WITHOUT_PRINT, &node_data, __find_music_cb);
 }
 

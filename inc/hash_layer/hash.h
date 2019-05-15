@@ -19,12 +19,6 @@ typedef enum {
 	WITHOUT_PRINT,
 } printable_t;
 
-// 遍历所有节点，还是指定哈希槽的节点
-typedef enum {
-	TRAVERSE_ALL,
-	TRAVERSE_SPECIFIC_HASH_SLOT,
-} traverse_type_t;
-
 typedef enum {
 	TRAVERSE_BY_LOGIC,
 	TRAVERSE_BY_PHYSIC,
@@ -119,8 +113,8 @@ int del_node(const char* path, hash_node_data_t* input_node_data,
 // 遍历节点
 uint8_t traverse_nodes(const char* list_path,
 		const char* download_list_path, const char* delete_list_path,
-		traverse_type_t traverse_type, traverse_by_what_t by_what,
-		uint32_t which_slot, printable_t print, hash_node_data_t* input_node_data,
+		traverse_by_what_t by_what, uint32_t which_slot, printable_t printable,
+		hash_node_data_t* input_node_data,
 		traverse_action_t (*cb)(const char*, const char*, const char*, hash_node_data_t*, hash_node_data_t*));
 
 // 初始化哈希引擎，告知所需信息

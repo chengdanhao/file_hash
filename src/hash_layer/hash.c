@@ -995,12 +995,12 @@ exit:
 }
 #undef DEBUG_DEL_NODE
 
-// traverse_type 为 TRAVERSE_ALL 时，hash_key可随意填写
+// which_slot小于slot_cnt则遍历指定哈希槽，如果大于slot_cnt则遍历所有哈希槽
 // TODO: 这个函数参数太多了，后续如果业务扩展，可以考虑用变参的方式优化
 uint8_t traverse_nodes(const char* list_path,
 		const char* download_list_path, const char* delete_list_path,
-		traverse_type_t traverse_type, traverse_by_what_t by_what,
-		uint32_t which_slot, printable_t print, hash_node_data_t* input_node_data,
+		traverse_by_what_t by_what, uint32_t which_slot, printable_t printable,
+		hash_node_data_t* input_node_data,
 		traverse_action_t (*cb)(const char*, const char*, const char*, hash_node_data_t*, hash_node_data_t*)) {
 	traverse_action_t action = TRAVERSE_ACTION_DO_NOTHING;
 	uint8_t i = 0;
@@ -1009,6 +1009,8 @@ uint8_t traverse_nodes(const char* list_path,
 	off_t first_node_offset = 0;
 	off_t first_physic_node_offset = 0;
 	off_t first_logic_node_offset = 0;
+	off_t prev_offset = 0;
+	off_t next_offset = 0;
 	hash_header_t header;
 	slot_info_t* slots = NULL;
 	hash_node_t node;
@@ -1059,7 +1061,7 @@ uint8_t traverse_nodes(const char* list_path,
 		s_first_node = 1;
 
 		// TODO: hash_key和i的关系不一定可以直接比较，后续版本需要完善
-		if (TRAVERSE_SPECIFIC_HASH_SLOT == traverse_type && i != (which_slot % slot_cnt)) {
+		if (which_slot < slot_cnt && i != (which_slot % slot_cnt)) {
 			continue;
 		}
 
@@ -1069,7 +1071,8 @@ uint8_t traverse_nodes(const char* list_path,
 
 		first_node_offset = TRAVERSE_BY_LOGIC == by_what ? first_logic_node_offset : first_physic_node_offset;
 
-		if (WITH_PRINT == print) { printf("[%d] (%d) %s  ", i, header.slots[i].node_cnt, TRAVERSE_BY_LOGIC == by_what ? " \e[7;32mLOGIC\e[0m" : "\e[7;34mPHYSIC\e[0m"); }
+		if (WITH_PRINT == printable) { printf("[%d] (%d) %s  ", i, header.slots[i].node_cnt,
+				TRAVERSE_BY_LOGIC == by_what ? " \e[7;32mLOGIC\e[0m" : "\e[7;34mPHYSIC\e[0m"); }
 
 		offset = first_node_offset;
 		do {
@@ -1091,22 +1094,25 @@ uint8_t traverse_nodes(const char* list_path,
 
 			node.data.value = node_data_value;
 
+			prev_offset = TRAVERSE_BY_LOGIC == by_what ? node.offsets.logic_prev : node.offsets.physic_prev;
+			next_offset = TRAVERSE_BY_LOGIC == by_what ? node.offsets.logic_next : node.offsets.physic_next;
+
 			if (s_first_node) {
 				s_first_node = 0;
 			} else {
-				if (WITH_PRINT == print) { printf(" --- "); }
+				if (WITH_PRINT == printable) { printf(" --- "); }
 			}
 
-			if (WITH_PRINT == print) { printf("<0x%lX> ( 0x%lX : ", TRAVERSE_BY_LOGIC == by_what ? node.offsets.logic_prev : node.offsets.physic_prev, offset); }
+			if (WITH_PRINT == printable) { printf("<0x%lX> ( 0x%lX : ", prev_offset, offset); }
 
 			if (0 == node.used) {
-				if (WITH_PRINT == print) { printf("* ) <0x%lX>", TRAVERSE_BY_LOGIC == by_what ? node.offsets.logic_next : node.offsets.physic_next); }
+				if (WITH_PRINT == printable) { printf("* ) <0x%lX>", next_offset); }
 				goto next_loop;
 			}
 
 			action = cb(list_path, download_list_path, delete_list_path, &(node.data), input_node_data);
 
-			if (WITH_PRINT == print) { printf(" ) <0x%lX>", TRAVERSE_BY_LOGIC == by_what ? node.offsets.logic_next : node.offsets.physic_next); }
+			if (WITH_PRINT == printable) { printf(" ) <0x%lX>", next_offset); }
 
 			if (TRAVERSE_ACTION_UPDATE & action) {
 				// 跳回到节点头部
@@ -1133,10 +1139,10 @@ uint8_t traverse_nodes(const char* list_path,
 			}
 
 next_loop:
-			offset = TRAVERSE_BY_LOGIC == by_what ? node.offsets.logic_next : node.offsets.physic_next;
+			offset = next_offset;
 		} while (offset != first_node_offset);
 
-		if (WITH_PRINT == print) { printf("\n"); }
+		if (WITH_PRINT == printable) { printf("\n"); }
 	}
 
 close_file:
