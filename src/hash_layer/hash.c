@@ -996,12 +996,9 @@ exit:
 #undef DEBUG_DEL_NODE
 
 // which_slot小于slot_cnt则遍历指定哈希槽，如果大于slot_cnt则遍历所有哈希槽
-// TODO: 这个函数参数太多了，后续如果业务扩展，可以考虑用变参的方式优化
-uint8_t traverse_nodes(const char* list_path,
-		const char* download_list_path, const char* delete_list_path,
-		traverse_by_what_t by_what, uint32_t which_slot, printable_t printable,
-		hash_node_data_t* input_node_data,
-		traverse_action_t (*cb)(const char*, const char*, const char*, hash_node_data_t*, hash_node_data_t*)) {
+uint8_t traverse_nodes(const char* list_path, traverse_by_what_t by_what,
+		uint32_t which_slot, printable_t printable, void* input_arg,
+		traverse_action_t (*cb)(hash_node_data_t* file_node_data, void* input_arg)) {
 	traverse_action_t action = TRAVERSE_ACTION_DO_NOTHING;
 	uint8_t i = 0;
 	int fd = 0;
@@ -1110,7 +1107,7 @@ uint8_t traverse_nodes(const char* list_path,
 				goto next_loop;
 			}
 
-			action = cb(list_path, download_list_path, delete_list_path, &(node.data), input_node_data);
+			action = cb(&(node.data), input_arg);
 
 			if (WITH_PRINT == printable) { printf(" ) <0x%lX>", next_offset); }
 

@@ -110,12 +110,10 @@ int add_node(const char* path,
 int del_node(const char* path, hash_node_data_t* input_node_data,
 		int (*cb)(hash_node_data_t*, hash_node_data_t*));
 
-// 遍历节点
-uint8_t traverse_nodes(const char* list_path,
-		const char* download_list_path, const char* delete_list_path,
-		traverse_by_what_t by_what, uint32_t which_slot, printable_t printable,
-		hash_node_data_t* input_node_data,
-		traverse_action_t (*cb)(const char*, const char*, const char*, hash_node_data_t*, hash_node_data_t*));
+// which_slot小于slot_cnt则遍历指定哈希槽，如果大于slot_cnt则遍历所有哈希槽
+uint8_t traverse_nodes(const char* list_path, traverse_by_what_t by_what,
+		uint32_t which_slot, printable_t printable, void* input_arg,
+		traverse_action_t (*cb)(hash_node_data_t* file_node_data, void* input_arg));
 
 // 初始化哈希引擎，告知所需信息
 int init_hash_engine(const char* path, init_method_t rebuild,
