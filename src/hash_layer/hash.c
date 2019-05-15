@@ -80,6 +80,60 @@ exit:
 #define write(fd, buf, count)	happy_write(__func__, __LINE__, fd, buf, count)
 #define read(fd, buf, count)	happy_read(__func__, __LINE__, fd, buf, count)
 
+int get_slot_node_cnt(const char* path, uint32_t which_slot) {
+	int ret = -1;
+	int fd = 0;
+	hash_header_t header;
+	slot_info_t* slots = NULL;
+	uint32_t slot_cnt = 0;
+	uint32_t node_cnt = 0;
+
+	memset(&header, 0, sizeof(hash_header_t));
+
+	if ((fd = open(path, O_RDONLY)) < 0) {
+		hash_error("open file %s fail : %s.", path, strerror(errno));
+		goto exit;
+	}
+
+	// 先读取头部的哈希信息
+	if (read(fd, &header, sizeof(hash_header_t)) < 0) {
+		hash_error("read header error : %s.", strerror(errno));
+		goto close_file;
+	}
+
+	slot_cnt = header.slot_cnt;
+
+	// 为0表示获取第一个逻辑节点地址
+	if (NULL == (slots = (void*)calloc(slot_cnt, sizeof(slot_info_t)))) {
+		hash_error("calloc failed.");
+		goto exit;
+	}
+
+	if (read(fd, slots, slot_cnt * sizeof(slot_info_t)) < 0) {
+		hash_error("read slot_info error : %s.", strerror(errno));
+		goto close_file;
+	}
+
+	header.slots = slots;
+
+	which_slot %= slot_cnt;
+	node_cnt = header.slots[which_slot].node_cnt;
+
+	ret = 0;
+
+close_file:
+	close(fd);
+
+exit:
+	safe_free(slots);
+	return (0 == ret ? node_cnt : ret);
+
+}
+
+bool is_slot_empty(const char* path, uint32_t which_slot) {
+	return (0 == get_slot_node_cnt(path, which_slot));
+}
+
 #define DEBUG_GET_HEADER 1
 // 外部调用时需填充header结构体，包括其中的header.data.value内容
 int get_header_data(const char* path, hash_header_data_t* output_header_data) {
@@ -254,93 +308,6 @@ exit:
 
 }
 #undef DEBUG_GET_NODE
-
-#if 0
-#define DEBUG_SET_NODE
-int set_node(const char* path, get_node_method_t method, uint32_t hash_key,
-		off_t offset, hash_node_t* input_node, int (*cb)(hash_node_t*, hash_node_t*)) {
-	int ret = -1;
-	int fd = 0;
-	hash_header_t header;
-	hash_node_t node;
-	void* node_data_value = NULL;
-	uint32_t group = 0;
-	uint32_t slot_cnt = 0;
-	uint32_t header_data_value_size = 0;
-	uint32_t node_data_value_size = 0;
-
-	memset(&header, 0, sizeof(hash_header_t));
-	memset(&node, 0, sizeof(hash_node_t));
-
-	if ((fd = open(path, O_RDWR)) < 0) {
-		hash_error("open file %s fail : %s.", path, strerror(errno));
-		goto exit;
-	}
-
-	// 先读取头部的哈希信息
-	if (read(fd, &header, sizeof(hash_header_t)) < 0) {
-		hash_error("read header error : %s.", strerror(errno));
-		goto close_file;
-	}
-
-	slot_cnt = header.slot_cnt;
-	header_data_value_size = header.header_data_value_size;
-	node_data_value_size = header.node_data_value_size;
-
-	if (method == GET_NODE_BY_HASH_SLOT) {
-		group = hash_key % slot_cnt;
-		offset = (sizeof(hash_header_t) + header_data_value_size)\
-			 + group * (sizeof(hash_node_t) + node_data_value_size);
-	}
-
-	node_data_value_size = header.node_data_value_size;
-
-	if (node_data_value_size > 0
-			&& NULL == (node_data_value = (void*)calloc(1, node_data_value_size))) {
-		hash_error("calloc failed.");
-		goto exit;
-	}
-
-	// 建立关联，方便后面使用。之后不要破坏这种关联（比如read调用）
-	node.data.value = node_data_value;
-
-	// 定位到指定的偏移量处
-	if (lseek(fd, offset, SEEK_SET) < 0) {
-		hash_error("seek to %ld fail : %s.", offset, strerror(errno));
-		goto close_file;
-	}
-
-	// 在回调函数中可以返回上/下一首歌曲的偏移量
-	cb(&node, input_node);
-
-	// 再次定位到节点起始位置
-	if (lseek(fd, offset, SEEK_SET) < 0) {
-		hash_error("seek back to %ld fail : %s.", offset, strerror(errno));
-		goto close_file;
-	}
-
-	if (write(fd, &node, sizeof(hash_node_t)) < 0) {
-		hash_error("write node error : %s.", strerror(errno));
-		goto close_file;
-	}
-
-	if (node_data_value_size > 0
-			&& write(fd, node.data.value, node_data_value_size) < 0) {
-		hash_error("write node.data.value error : %s.", strerror(errno));
-		goto close_file;
-	}
-
-	ret = 0;
-
-close_file:
-	close(fd);
-
-exit:
-	safe_free(node.data.value);
-	return ret;
-}
-#undef DEBUG_SET_NODE
-#endif
 
 #define DEBUG_ADD_NODE 0
 int add_node(const char* path,

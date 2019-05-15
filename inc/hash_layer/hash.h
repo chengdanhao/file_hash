@@ -90,6 +90,12 @@ typedef struct {
 
 /*****************************************************/
 
+// 指定哈希槽节点个数，异常时返回-1
+int get_slot_node_cnt(const char* path, uint32_t which_slot);
+
+// 指定哈希槽是否为空
+bool is_slot_empty(const char* path, uint32_t which_slot);
+
 // 获取哈希属性
 // 外部调用时需填充header结构体，包括其中的header.data.value内容
 int get_header_data(const char* path, hash_header_data_t* output_header);
@@ -99,11 +105,7 @@ int get_header_data(const char* path, hash_header_data_t* output_header);
 int set_header_data(const char* path, hash_header_data_t* input_header);
 
 // 获取指定偏移量节点信息
-int get_node(const char* path, const uint32_t hash_key, off_t offset, hash_node_t* output_node);
-
-// 修改指定偏移量节点信息
-/*int set_node(const char* path, get_node_method_t method, uint32_t hash_key,
-		off_t offset, hash_node_t* input_node, int (*cb)(hash_node_t*, hash_node_t*));*/
+int get_node(const char* path, const uint32_t which_slot, off_t offset, hash_node_t* output_node);
 
 // 添加节点
 int add_node(const char* path,

@@ -32,7 +32,7 @@
 #define music_error(fmt, ...)
 #endif
 
-#define DEBUG_LIST 1
+#define DEBUG_LIST 0
 traverse_action_t __show_playlist_cb(const char* list_path,
 		const char* download_list_path, const char* delete_list_path,
 		hash_node_data_t* file_node_data, hash_node_data_t* input_node_data) {
@@ -163,6 +163,10 @@ void _post_diff_playlist(const char* list_path,
 			which_slot, WITHOUT_PRINT, NULL, __clean_playlist_cb);
 }
 
+int _get_playlist_music_cnt(const char* list_path, uint32_t which_slot) {
+	return get_slot_node_cnt(list_path, which_slot);
+}
+
 int _get_first_node(const char* list_path, music_data_value_t* music_data_value) {
 	hash_node_t prev_node;
 
@@ -276,8 +280,7 @@ int _get_music(const char* list_path, uint32_t which_slot, direction_t next_or_p
 
 	get_node(list_path, which_slot, offset, &node);
 
-	if (node.offsets.logic_prev == node.offsets.logic_next
-			&& 0 == strcmp("", music_data_value.path)) {
+	if (is_slot_empty(list_path, which_slot)) {
 		music_warn("no music in slot %d.", which_slot);
 		goto exit;
 	}

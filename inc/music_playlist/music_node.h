@@ -65,6 +65,7 @@ void _post_diff_playlist(const char* list_path,
 		const char* delete_list_path,
 		uint32_t which_slot);
 int _get_first_node(const char* list_path, music_data_value_t* music_data_value);
+int _get_playlist_music_cnt(const char* list_path, uint32_t which_slot);
 int _get_playlist_header(const char* func, const int line, const char* path, playlist_header_data_value_t* header_data_value);
 int _set_playlist_header(const char* func, const int line, const char* path, playlist_header_data_value_t* header_data_value);
 int _get_music(const char* list_path, uint32_t which_slot, direction_t prev_or_next);
@@ -81,6 +82,8 @@ int _init_music_hash_engine(const char* path, uint32_t slot_cnt);
 #define post_diff_story_playlist() _post_diff_playlist(STORY_PLAYLIST_PATH, STORY_DOWNLOAD_LIST_PATH, STORY_DELETE_LIST_PATH, 0)
 
 #define get_story_first_node(music_data_value) _get_first_node(STORY_PLAYLIST_PATH, music_data_value)
+
+#define get_story_playlist_music_cnt() _get_playlist_music_cnt(STORY_PLAYLIST_PATH, 0)
 
 #define get_story_playlist_header(header_data_value) _get_playlist_header(__func__, __LINE__, STORY_PLAYLIST_PATH, header_data_value)
 #define set_story_playlist_header(header_data_value) _set_playlist_header(__func__, __LINE__, STORY_PLAYLIST_PATH, header_data_value)
@@ -108,6 +111,8 @@ int _init_music_hash_engine(const char* path, uint32_t slot_cnt);
 #define post_diff_album_playlist(which_slot) _post_diff_playlist(ALBUM_PLAYLIST_PATH, ALBUM_DOWNLOAD_LIST_PATH, ALBUM_DELETE_LIST_PATH, which_slot)
 
 #define get_album_first_node(music_data_value) _get_first_node(ALBUM_PLAYLIST_PATH, music_data_value)
+
+#define get_album_playlist_music_cnt(which_slot) _get_playlist_music_cnt(ALBUM_PLAYLIST_PATH, which_slot)
 
 #define get_album_playlist_header(header_data_value) _get_playlist_header(__func__, __LINE__, ALBUM_PLAYLIST_PATH, header_data_value)
 #define set_album_playlist_header(header_data_value) _set_playlist_header(__func__, __LINE__, ALBUM_PLAYLIST_PATH, header_data_value)

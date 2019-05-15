@@ -143,6 +143,7 @@ void build_story_favorite_playlist() {
 		"444",
 	};
 
+	uint32_t music_cnt = 0;
 	music_data_value_t prev_music_data_value;
 	music_data_value_t curr_music_data_value;
 
@@ -201,11 +202,13 @@ void build_story_favorite_playlist() {
 	show_story_playlist();
 	printf("----------------------------------------------------------\n");
 
-	for (int j = 0; j < 5; j++) {
+	music_cnt = get_story_playlist_music_cnt();
+	printf("-- [%d]\n", music_cnt);
+	for (int j = 0; j < music_cnt; j++) {
 		get_story_next_music();
 	}
 	printf("-------------\n");
-	for (int j = 0; j < 5; j++) {
+	for (int j = 0; j < music_cnt; j++) {
 		get_story_prev_music();
 	}
 	printf("---------------------------------------\n");
@@ -272,6 +275,7 @@ void build_album_favorite_playlist() {
 	};
 
 	uint32_t which_slot = 0;
+	uint32_t music_cnt = 0;
 	playlist_header_data_value_t header_data_value;
 	music_data_value_t prev_music_data_value;
 	music_data_value_t curr_music_data_value;
@@ -385,29 +389,29 @@ void build_album_favorite_playlist() {
 	show_album_playlist();
 	printf("----------------------------------------------------------\n");
 
-#if 0
 	// 打印
 	for (int i = 0; i < header_data_value.playlist_cnt; ++i) {
-		printf("album[%d] -------------\n", i);
-		for (int j = 0; j < 5; ++j) {
-			get_album_next_music(0);
+		music_cnt = get_album_playlist_music_cnt(i);
+		printf("album [%d] = %d. -------------\n", i, music_cnt);
+		for (int j = 0; j < music_cnt; ++j) {
+			get_album_next_music(i);
 		}
 	}
 	printf("\n-------------\n\n");
 	for (int i = 0; i < header_data_value.playlist_cnt; ++i) {
-		printf("album[%d] -------------\n", i);
-		for (int j = 0; j < 5; j++) {
-			get_album_next_music(i);
+		music_cnt = get_album_playlist_music_cnt(i);
+		printf("album[%d] = %d -------------\n", i, music_cnt);
+		for (int j = 0; j < music_cnt; j++) {
+			get_album_prev_music(i);
 		}
 	}
 	printf("---------------------------------------\n");
-#endif
 }
 
 int test_music_playlist_main() {
-	diff_story_playlist();
+	//diff_story_playlist();
 	//build_story_favorite_playlist();
-	//build_album_favorite_playlist();
+	build_album_favorite_playlist();
 
 	return 0;
 }
