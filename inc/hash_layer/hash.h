@@ -2,6 +2,7 @@
 #define __HASH_H__
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #define safe_free(p) do { if (p) { free(p); p = NULL; } } while(0)
 
@@ -16,7 +17,7 @@ typedef enum {
 typedef enum {
 	WITH_PRINT,
 	WITHOUT_PRINT,
-} print_t;
+} printable_t;
 
 // 遍历所有节点，还是指定哈希槽的节点
 typedef enum {
@@ -24,61 +25,91 @@ typedef enum {
 	TRAVERSE_SPECIFIC_HASH_SLOT,
 } traverse_type_t;
 
-// 获取节点的方式，通过哈希值取得“首节点”还是通过偏移量直接定位
 typedef enum {
-	GET_NODE_BY_HASH_SLOT,
-	GET_NODE_BY_OFFSET,
-} get_node_method_t;
+	TRAVERSE_BY_LOGIC,
+	TRAVERSE_BY_PHYSIC,
+} traverse_by_what_t;
 
 typedef enum {
 	GENTLE_INIT,
 	FORCE_INIT,
 } init_method_t;
 
-// 节点的数据部分，分key和value，其中value由用户再上层填充
 typedef struct {
-	uint32_t key;	// 该字段不能删！！！
+	off_t logic_prev;	// 按序链接后的逻辑顺序
+	off_t logic_next;
+	off_t physic_prev;	// 物理层存储顺序
+	off_t physic_next;
+} offset_t;
+
+
+/************************************************
+ * 哈希节点的信息
+ ***********************************************/
+
+// 节点的数据部分，value由用户在上层填充，其他字段不能删除！！
+typedef struct {
+	bool is_first_node;	// 表示是否是逻辑第一个节点
+	uint32_t key;	
 	void* value;
 } hash_node_data_t;
 
 // 文件节点，以链式方式存储在文件中
 typedef struct {
 	uint8_t used;
-	off_t prev_offset;
-	off_t next_offset;
+	offset_t offsets;		//每个节点的偏移量信息
 	hash_node_data_t data;
 } hash_node_t;
+
+/*****************************************************/
+
+
+/************************************************
+ * 哈希文件头部信息，记录了当前哈希文件的整体信息
+ * 及每个哈希槽的基本信息
+ ***********************************************/
 
 typedef struct {
 	void* value;
 } hash_header_data_t;
 
-// 记录哈希链表的一些属性，由上层填充
-// 该结构体不能删除
+// 记录每个哈希槽的信息
 typedef struct {
-	uint32_t hash_slot_cnt;
+	off_t first_logic_node_offset;	// 记录排序后第一个节点位置
+	uint32_t node_cnt;				// 记录每个槽中节点个数
+} slot_info_t;
+
+// 记录哈希链表的一些属性，由上层填充
+typedef struct {
+	uint32_t slot_cnt;
 	uint32_t header_data_value_size;
 	uint32_t node_data_value_size;
+	slot_info_t *slots;
 	hash_header_data_t data;
 } hash_header_t;
 
+/*****************************************************/
+
+// 指定哈希槽节点个数，异常时返回-1
+int get_slot_node_cnt(const char* path, uint32_t which_slot);
+
+// 指定哈希槽是否为空
+bool is_slot_empty(const char* path, uint32_t which_slot);
+
 // 获取哈希属性
-int get_header(const char* path, hash_header_data_t* output_header_data,
-		int (*cb)(hash_header_data_t*, hash_header_data_t*));
+// 外部调用时需填充header结构体，包括其中的header.data.value内容
+int get_header_data(const char* path, hash_header_data_t* output_header);
 
 // 设置哈希属性
-int set_header(const char* path, hash_header_data_t* iutput_heade_data,
-		int (*cb)(hash_header_data_t*, hash_header_data_t*));
+// 外部调用时需填充header结构体，包括其中的header.data.value内容
+int set_header_data(const char* path, hash_header_data_t* input_header);
 
-// 获取节点信息
-int get_node(const char* path, get_node_method_t method, uint32_t hash_key,
-		off_t offset, hash_node_t* output_node, int (*cb)(hash_node_t*, hash_node_t*));
-
-int set_node(const char* path, get_node_method_t method, uint32_t hash_key,
-		off_t offset, hash_node_t* input_node, int (*cb)(hash_node_t*, hash_node_t*));
+// 获取指定偏移量节点信息
+int get_node(const char* path, const uint32_t which_slot, off_t offset, hash_node_t* output_node);
 
 // 添加节点
-int add_node(const char* path, hash_node_data_t* input_node_data,
+int add_node(const char* path,
+		hash_node_data_t* input_prev_node_data, hash_node_data_t* input_curr_node_data,
 		int (*cb)(hash_node_data_t*, hash_node_data_t*));
 
 // 删除节点
@@ -86,9 +117,11 @@ int del_node(const char* path, hash_node_data_t* input_node_data,
 		int (*cb)(hash_node_data_t*, hash_node_data_t*));
 
 // 遍历节点
-uint8_t traverse_nodes(const char* path, traverse_type_t traverse_type,
-		uint32_t hash_key, print_t print, hash_node_data_t* input_node_data,
-		traverse_action_t (*cb)(hash_node_t*, hash_node_data_t*));
+uint8_t traverse_nodes(const char* list_path,
+		const char* download_list_path, const char* delete_list_path,
+		traverse_type_t traverse_type, traverse_by_what_t by_what,
+		uint32_t which_slot, printable_t print, hash_node_data_t* input_node_data,
+		traverse_action_t (*cb)(const char*, const char*, const char*, hash_node_data_t*, hash_node_data_t*));
 
 // 初始化哈希引擎，告知所需信息
 int init_hash_engine(const char* path, init_method_t rebuild,

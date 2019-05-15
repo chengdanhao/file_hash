@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "alarm_tone_node.h"
-
+#if 0
 #define ALARM_TONE_INFO 1
 #define ALARM_TONE_DBUG 1
 #define ALARM_TONE_WARN 1
@@ -167,3 +167,4 @@ int init_alarm_tone_hash_engine() {
 	return init_hash_engine(ALARM_TONE_LIST_PATH, FORCE_INIT,
 			ALARM_TONE_LIST_SLOT_CNT, sizeof(alarm_tone_data_value_t), 0);
 }
+#endif
