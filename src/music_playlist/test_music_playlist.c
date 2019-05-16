@@ -105,10 +105,6 @@ void diff_story_playlist() {
 	show_story_playlist();
 	printf("----------------------------------------------------------\n");
 
-
-	init_story_download_list_hash_engine();
-	init_story_delete_list_hash_engine();
-
 	post_diff_story_playlist();
 
 	printf("-- post-diff ---------------------------------------\n");
@@ -119,6 +115,161 @@ void diff_story_playlist() {
 	show_story_delete_list();
 	printf("下载列表 : ");
 	show_story_download_list();
+}
+
+void diff_album_playlist() {
+	const char* channel_1_0 = "chan_1_0";
+	const char* playlist_1_0[] = {
+		"0A",
+		"0B",
+		"0C",
+		"0D",
+	};
+
+	const char* channel_1_1 = "chan_1_1";
+	const char* playlist_1_1[] = {
+		"1E",
+		"1F",
+		"1G",
+		"1H",
+	};
+
+	const char* channel_1_2 = "chan_1_2";
+	const char* playlist_1_2[] = {
+		"2I",
+		"2J",
+		"2K",
+		"2L",
+	};
+
+	const char* channel_2_0 = "chan_1_0";
+	const char* playlist_2_0[] = {
+		"0A",
+		"0B",
+		"0D",
+		"01_new",
+		"02_new",
+	};
+
+	const char* channel_2_1 = "chan_1_1";
+	const char* playlist_2_1[] = {
+		"1F",
+		"1H",
+		"1R_new",
+		"1S_new",
+		"1T_new",
+	};
+
+	const char* channel_2_2 = "chan_2_2";
+	const char* playlist_2_2[] = {
+		"2U_new",
+		"2V_new",
+		"2W_new",
+		"2X_new",
+	};
+
+	uint32_t which_slot = 0;
+	music_data_value_t prev_music_data_value;
+	music_data_value_t curr_music_data_value;
+
+	memset(&prev_music_data_value, 0, sizeof(prev_music_data_value));
+	memset(&curr_music_data_value, 0, sizeof(curr_music_data_value));
+
+	init_album_playlist_hash_engine();
+
+	// 开始第一次添加歌曲
+	strncpy(prev_music_data_value.path, DUMMY_MUSIC_PATH, sizeof(prev_music_data_value.path));
+	which_slot = 0;
+	printf("添加 %s 到 %d 哈希槽\n", channel_1_0, which_slot);
+	for (int i = 0; i < sizeof(playlist_1_0) / sizeof(char*); i++) {
+		curr_music_data_value.delete_or_not = MUSIC_KEEP;
+		strncpy(curr_music_data_value.path, playlist_1_0[i], sizeof(curr_music_data_value.path));
+		curr_music_data_value.which_slot = which_slot;
+		add_album_music_in_slot(which_slot, &prev_music_data_value, &curr_music_data_value);
+		prev_music_data_value = curr_music_data_value;
+	}
+
+	strncpy(prev_music_data_value.path, DUMMY_MUSIC_PATH, sizeof(prev_music_data_value.path));
+	which_slot = 1;
+	printf("添加 %s 到 %d 哈希槽\n", channel_1_1, which_slot);
+	for (int i = 0; i < sizeof(playlist_1_1) / sizeof(char*); i++) {
+		curr_music_data_value.delete_or_not = MUSIC_KEEP;
+		strncpy(curr_music_data_value.path, playlist_1_1[i], sizeof(curr_music_data_value.path));
+		curr_music_data_value.which_slot = which_slot;
+		add_album_music_in_slot(which_slot, &prev_music_data_value, &curr_music_data_value);
+		prev_music_data_value = curr_music_data_value;
+	}
+
+	strncpy(prev_music_data_value.path, DUMMY_MUSIC_PATH, sizeof(prev_music_data_value.path));
+	which_slot = 2;
+	printf("添加 %s 到 %d 哈希槽\n", channel_1_2, which_slot);
+	for (int i = 0; i < sizeof(playlist_1_2) / sizeof(char*); i++) {
+		curr_music_data_value.delete_or_not = MUSIC_KEEP;
+		strncpy(curr_music_data_value.path, playlist_1_2[i], sizeof(curr_music_data_value.path));
+		curr_music_data_value.which_slot = which_slot;
+		add_album_music_in_slot(which_slot, &prev_music_data_value, &curr_music_data_value);
+		prev_music_data_value = curr_music_data_value;
+	}
+
+	printf("-- 原始专辑歌曲 ---------------------------------------\n");
+	show_album_playlist();
+	printf("----------------------------------------------------------\n");
+
+	// 预处理
+	pre_diff_album_playlist();
+
+	// 开始第二次增加歌曲
+	which_slot = 0;
+	get_album_first_node_in_slot(which_slot, &prev_music_data_value);
+	printf("添加 %s 到 %d 哈希槽\n", channel_2_0, which_slot);
+	for (int i = 0; i < sizeof(playlist_2_0) / sizeof(char*); i++) {
+		curr_music_data_value.delete_or_not = MUSIC_TO_BE_DOWNLOAD;
+		strncpy(curr_music_data_value.path, playlist_2_0[i], sizeof(curr_music_data_value.path));
+		curr_music_data_value.which_slot = which_slot;
+		add_album_music_in_slot(which_slot, &prev_music_data_value, &curr_music_data_value);
+		prev_music_data_value = curr_music_data_value;
+	}
+
+	which_slot = 1;
+	get_album_first_node_in_slot(which_slot, &prev_music_data_value);
+	printf("添加 %s 到 %d 哈希槽\n", channel_2_1, which_slot);
+	for (int i = 0; i < sizeof(playlist_2_1) / sizeof(char*); i++) {
+		curr_music_data_value.delete_or_not = MUSIC_TO_BE_DOWNLOAD;
+		strncpy(curr_music_data_value.path, playlist_2_1[i], sizeof(curr_music_data_value.path));
+		curr_music_data_value.which_slot = which_slot;
+		add_album_music_in_slot(which_slot, &prev_music_data_value, &curr_music_data_value);
+		prev_music_data_value = curr_music_data_value;
+	}
+
+	which_slot = 2;
+	get_album_first_node_in_slot(which_slot, &prev_music_data_value);
+	printf("添加 %s 到 %d 哈希槽\n", channel_2_2, which_slot);
+	for (int i = 0; i < sizeof(playlist_2_2) / sizeof(char*); i++) {
+		curr_music_data_value.delete_or_not = MUSIC_TO_BE_DOWNLOAD;
+		strncpy(curr_music_data_value.path, playlist_2_2[i], sizeof(curr_music_data_value.path));
+		curr_music_data_value.which_slot = which_slot;
+		add_album_music_in_slot(which_slot, &prev_music_data_value, &curr_music_data_value);
+		prev_music_data_value = curr_music_data_value;
+	}
+
+	printf("-- diff专辑歌曲 ---------------------------------------\n");
+	show_album_playlist();
+	printf("----------------------------------------------------------\n");
+
+	// 处理完了后
+	post_diff_album_playlist();
+
+	printf("-- post-diff专辑歌曲 ---------------------------------------\n");
+	show_album_playlist();
+	printf("----------------------------------------------------------\n");
+
+	printf("-- 下载列表 ---------------------------------------\n");
+	show_album_download_list();
+	printf("----------------------------------------------------------\n");
+
+	printf("-- 删除列表 ---------------------------------------\n");
+	show_album_delete_list();
+	printf("----------------------------------------------------------\n");
 }
 
 void build_story_favorite_playlist() {
@@ -434,9 +585,10 @@ void build_album_favorite_playlist() {
 }
 
 int test_music_playlist_main() {
-	diff_story_playlist();
-	build_story_favorite_playlist();
-	build_album_favorite_playlist();
+	//diff_story_playlist();
+	diff_album_playlist();
+	//build_story_favorite_playlist();
+	//build_album_favorite_playlist();
 
 	return 0;
 }

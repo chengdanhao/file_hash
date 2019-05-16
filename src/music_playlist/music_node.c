@@ -144,16 +144,19 @@ void _show_playlist(const char* list_path) {
 }
 
 // 将music的delete_or_not标记设置为MUSIC_DELETE
-void _pre_diff_playlist(const char* list_path) {
+void _pre_diff_playlist(const char* list_path,
+		const char* download_list_path,
+		const char* delete_list_path) {
 	traverse_nodes(list_path, TRAVERSE_BY_LOGIC,
 			MAX_HASH_SLOT_CNT, WITHOUT_PRINT, NULL, __pre_diff_playlist_cb);
+
+	_init_music_hash_engine(download_list_path, ALBUM_SLOT_CNT);
+	_init_music_hash_engine(delete_list_path, ALBUM_SLOT_CNT);
 }
 
 void _post_diff_playlist(const char* list_path,
 		const char* download_list_path,
 		const char* delete_list_path) {
-	music_info("download_list = %s, delete_list = %s.", download_list_path, delete_list_path);
-
 	download_and_delete_info_t input_arg;
 	playlist_header_data_value_t playlist_header;
 
