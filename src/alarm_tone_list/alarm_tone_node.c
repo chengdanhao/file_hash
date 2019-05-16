@@ -124,7 +124,7 @@ int add_alarm_tone(uint32_t key, uint32_t time_stamp, char* alarm_tone_path) {
 	node_data.key = key;
 	node_data.value = &alarm_tone_data_value;
 
-	if (0 != (ret = add_node(ALARM_TONE_LIST_PATH, &node_data, _add_alarm_tone_cb))) {
+	if (0 != (ret = insert_node(ALARM_TONE_LIST_PATH, &node_data, _add_alarm_tone_cb))) {
 		at_error("add failed : %s.", alarm_tone_path);
 		goto exit;
 	}

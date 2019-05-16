@@ -308,7 +308,7 @@ exit:
 #undef DEBUG_GET_NODE
 
 #define DEBUG_ADD_NODE 0
-int add_node(const char* path,
+int insert_node(const char* path,
 		hash_node_data_t* input_prev_node_data, hash_node_data_t* input_curr_node_data,
 		bool (*cb)(hash_node_data_t*, hash_node_data_t*)) {
 	int ret = -1;

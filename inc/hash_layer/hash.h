@@ -102,7 +102,7 @@ int set_header_data(const char* path, hash_header_data_t* input_header);
 int get_node(const char* path, uint32_t which_slot, off_t offset, hash_node_t* output_node);
 
 // 添加节点
-int add_node(const char* path,
+int insert_node(const char* path,
 		hash_node_data_t* input_prev_node_data, hash_node_data_t* input_curr_node_data,
 		bool (*cb)(hash_node_data_t*, hash_node_data_t*));
 

@@ -227,7 +227,7 @@ int add_tbd(uint32_t key, char url[], char path[]) {
 	node_data.key = key;
 	node_data.value = &tbd_node_data_value;
 
-	if (0 != (ret = add_node(TBD_LIST_PATH, &node_data, _add_tbd_cb))) {
+	if (0 != (ret = insert_node(TBD_LIST_PATH, &node_data, _add_tbd_cb))) {
 		tbd_error("add failed : %s.", url);
 		goto exit;
 	}

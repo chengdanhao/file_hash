@@ -70,13 +70,13 @@ void diff_story_playlist() {
 		curr_music_data_value.delete_or_not = MUSIC_KEEP;
 		curr_music_data_value.which_slot = 0;
 		strncpy(curr_music_data_value.path, playlist_1[i], sizeof(curr_music_data_value.path));
-		add_story_music(&prev_music_data_value, &curr_music_data_value);
+		insert_story_music(&prev_music_data_value, &curr_music_data_value);
 		prev_music_data_value = curr_music_data_value;
 	}
 
 #if 0
 	for (int i = 0; i < sizeof(playlist_1) / sizeof(char*); i++) {
-		del_story_music(playlist_1[i]);
+		delete_story_music(playlist_1[i]);
 	}
 #endif
 
@@ -97,7 +97,7 @@ void diff_story_playlist() {
 		curr_music_data_value.delete_or_not = MUSIC_TO_BE_DOWNLOAD;
 		strncpy(curr_music_data_value.path, playlist_2[i], sizeof(curr_music_data_value.path));
 		curr_music_data_value.which_slot = 0;
-		add_story_music(&prev_music_data_value, &curr_music_data_value);
+		insert_story_music(&prev_music_data_value, &curr_music_data_value);
 		prev_music_data_value = curr_music_data_value;
 	}
 
@@ -185,7 +185,7 @@ void diff_album_playlist() {
 		curr_music_data_value.delete_or_not = MUSIC_KEEP;
 		strncpy(curr_music_data_value.path, playlist_1_0[i], sizeof(curr_music_data_value.path));
 		curr_music_data_value.which_slot = which_slot;
-		add_album_music_in_slot(which_slot, &prev_music_data_value, &curr_music_data_value);
+		insert_album_music_in_slot(which_slot, &prev_music_data_value, &curr_music_data_value);
 		prev_music_data_value = curr_music_data_value;
 	}
 
@@ -196,7 +196,7 @@ void diff_album_playlist() {
 		curr_music_data_value.delete_or_not = MUSIC_KEEP;
 		strncpy(curr_music_data_value.path, playlist_1_1[i], sizeof(curr_music_data_value.path));
 		curr_music_data_value.which_slot = which_slot;
-		add_album_music_in_slot(which_slot, &prev_music_data_value, &curr_music_data_value);
+		insert_album_music_in_slot(which_slot, &prev_music_data_value, &curr_music_data_value);
 		prev_music_data_value = curr_music_data_value;
 	}
 
@@ -207,7 +207,7 @@ void diff_album_playlist() {
 		curr_music_data_value.delete_or_not = MUSIC_KEEP;
 		strncpy(curr_music_data_value.path, playlist_1_2[i], sizeof(curr_music_data_value.path));
 		curr_music_data_value.which_slot = which_slot;
-		add_album_music_in_slot(which_slot, &prev_music_data_value, &curr_music_data_value);
+		insert_album_music_in_slot(which_slot, &prev_music_data_value, &curr_music_data_value);
 		prev_music_data_value = curr_music_data_value;
 	}
 
@@ -226,7 +226,7 @@ void diff_album_playlist() {
 		curr_music_data_value.delete_or_not = MUSIC_TO_BE_DOWNLOAD;
 		strncpy(curr_music_data_value.path, playlist_2_0[i], sizeof(curr_music_data_value.path));
 		curr_music_data_value.which_slot = which_slot;
-		add_album_music_in_slot(which_slot, &prev_music_data_value, &curr_music_data_value);
+		insert_album_music_in_slot(which_slot, &prev_music_data_value, &curr_music_data_value);
 		prev_music_data_value = curr_music_data_value;
 	}
 
@@ -237,7 +237,7 @@ void diff_album_playlist() {
 		curr_music_data_value.delete_or_not = MUSIC_TO_BE_DOWNLOAD;
 		strncpy(curr_music_data_value.path, playlist_2_1[i], sizeof(curr_music_data_value.path));
 		curr_music_data_value.which_slot = which_slot;
-		add_album_music_in_slot(which_slot, &prev_music_data_value, &curr_music_data_value);
+		insert_album_music_in_slot(which_slot, &prev_music_data_value, &curr_music_data_value);
 		prev_music_data_value = curr_music_data_value;
 	}
 
@@ -248,7 +248,7 @@ void diff_album_playlist() {
 		curr_music_data_value.delete_or_not = MUSIC_TO_BE_DOWNLOAD;
 		strncpy(curr_music_data_value.path, playlist_2_2[i], sizeof(curr_music_data_value.path));
 		curr_music_data_value.which_slot = which_slot;
-		add_album_music_in_slot(which_slot, &prev_music_data_value, &curr_music_data_value);
+		insert_album_music_in_slot(which_slot, &prev_music_data_value, &curr_music_data_value);
 		prev_music_data_value = curr_music_data_value;
 	}
 
@@ -335,7 +335,7 @@ void build_story_favorite_playlist() {
 		curr_music_data_value.delete_or_not = MUSIC_KEEP;
 		strncpy(curr_music_data_value.path, playlist_1[i], sizeof(curr_music_data_value.path));
 		curr_music_data_value.which_slot = 0;
-		add_story_music(&prev_music_data_value, &curr_music_data_value);
+		insert_story_music(&prev_music_data_value, &curr_music_data_value);
 		prev_music_data_value = curr_music_data_value;
 	}
 
@@ -344,7 +344,7 @@ void build_story_favorite_playlist() {
 	printf("----------------------------------------------------------\n");
 
 	for (int i = 0; i < sizeof(del_playlist_1) / sizeof(char*); i++) {
-		del_story_music(del_playlist_1[i]);
+		delete_story_music(del_playlist_1[i]);
 		prev_music_data_value = curr_music_data_value;
 	}
 
@@ -358,7 +358,7 @@ void build_story_favorite_playlist() {
 		curr_music_data_value.delete_or_not = MUSIC_KEEP;
 		strncpy(curr_music_data_value.path, playlist_2[i], sizeof(curr_music_data_value.path));
 		curr_music_data_value.which_slot = 0;
-		add_story_music(&prev_music_data_value, &curr_music_data_value);
+		insert_story_music(&prev_music_data_value, &curr_music_data_value);
 		prev_music_data_value = curr_music_data_value;
 	}
 
@@ -372,7 +372,7 @@ void build_story_favorite_playlist() {
 		curr_music_data_value.delete_or_not = MUSIC_KEEP;
 		strncpy(curr_music_data_value.path, playlist_3[i], sizeof(curr_music_data_value.path));
 		curr_music_data_value.which_slot = 0;
-		add_story_music(&prev_music_data_value, &curr_music_data_value);
+		insert_story_music(&prev_music_data_value, &curr_music_data_value);
 		prev_music_data_value = curr_music_data_value;
 	}
 
@@ -480,7 +480,7 @@ void build_album_favorite_playlist() {
 		curr_music_data_value.delete_or_not = MUSIC_KEEP;
 		strncpy(curr_music_data_value.path, playlist_1_0[i], sizeof(curr_music_data_value.path));
 		curr_music_data_value.which_slot = which_slot;
-		add_album_music_in_slot(which_slot, &prev_music_data_value, &curr_music_data_value);
+		insert_album_music_in_slot(which_slot, &prev_music_data_value, &curr_music_data_value);
 		prev_music_data_value = curr_music_data_value;
 	}
 
@@ -491,7 +491,7 @@ void build_album_favorite_playlist() {
 		curr_music_data_value.delete_or_not = MUSIC_KEEP;
 		strncpy(curr_music_data_value.path, playlist_1_1[i], sizeof(curr_music_data_value.path));
 		curr_music_data_value.which_slot = which_slot;
-		add_album_music_in_slot(which_slot, &prev_music_data_value, &curr_music_data_value);
+		insert_album_music_in_slot(which_slot, &prev_music_data_value, &curr_music_data_value);
 		prev_music_data_value = curr_music_data_value;
 	}
 
@@ -502,7 +502,7 @@ void build_album_favorite_playlist() {
 		curr_music_data_value.delete_or_not = MUSIC_KEEP;
 		strncpy(curr_music_data_value.path, playlist_1_2[i], sizeof(curr_music_data_value.path));
 		curr_music_data_value.which_slot = which_slot;
-		add_album_music_in_slot(which_slot, &prev_music_data_value, &curr_music_data_value);
+		insert_album_music_in_slot(which_slot, &prev_music_data_value, &curr_music_data_value);
 		prev_music_data_value = curr_music_data_value;
 	}
 
@@ -513,7 +513,7 @@ void build_album_favorite_playlist() {
 
 	// 开始第一次删除歌曲，这里用首字母做哈希key，只是为了减少点代码
 	for (int i = 0; i < sizeof(del_playlist_1) / sizeof(char*); i++) {
-		del_album_music_in_slot(del_playlist_1[i][0], del_playlist_1[i]);
+		delete_album_music_in_slot(del_playlist_1[i][0], del_playlist_1[i]);
 		prev_music_data_value = curr_music_data_value;
 	}
 
@@ -531,7 +531,7 @@ void build_album_favorite_playlist() {
 		curr_music_data_value.delete_or_not = MUSIC_KEEP;
 		strncpy(curr_music_data_value.path, playlist_2_0[i], sizeof(curr_music_data_value.path));
 		curr_music_data_value.which_slot = which_slot;
-		add_album_music_in_slot(which_slot, &prev_music_data_value, &curr_music_data_value);
+		insert_album_music_in_slot(which_slot, &prev_music_data_value, &curr_music_data_value);
 		prev_music_data_value = curr_music_data_value;
 	}
 
@@ -542,7 +542,7 @@ void build_album_favorite_playlist() {
 		curr_music_data_value.delete_or_not = MUSIC_KEEP;
 		strncpy(curr_music_data_value.path, playlist_2_1[i], sizeof(curr_music_data_value.path));
 		curr_music_data_value.which_slot = which_slot;
-		add_album_music_in_slot(which_slot, &prev_music_data_value, &curr_music_data_value);
+		insert_album_music_in_slot(which_slot, &prev_music_data_value, &curr_music_data_value);
 		prev_music_data_value = curr_music_data_value;
 	}
 
@@ -553,7 +553,7 @@ void build_album_favorite_playlist() {
 		curr_music_data_value.delete_or_not = MUSIC_KEEP;
 		strncpy(curr_music_data_value.path, playlist_2_2[i], sizeof(curr_music_data_value.path));
 		curr_music_data_value.which_slot = which_slot;
-		add_album_music_in_slot(which_slot, &prev_music_data_value, &curr_music_data_value);
+		insert_album_music_in_slot(which_slot, &prev_music_data_value, &curr_music_data_value);
 		prev_music_data_value = curr_music_data_value;
 	}
 

@@ -61,7 +61,7 @@ traverse_action_t __clean_playlist_cb(hash_node_data_t* file_node_data, void* in
 	music_data_value_t* music_data_value = (music_data_value_t*)(file_node_data->value);
 	char* delete_list_path = (char*)input_arg;
 
-	_del_music(delete_list_path, music_data_value->which_slot, music_data_value->path);
+	_delete_music(delete_list_path, music_data_value->which_slot, music_data_value->path);
 
 	// TODO:删除文件
 
@@ -90,7 +90,7 @@ traverse_action_t __build_download_and_delete_list_cb(hash_node_data_t* file_nod
 		memset(&prev_music_data_value, 0, sizeof(music_data_value_t));
 
 		_get_first_node(delete_list_path, which_slot, &prev_music_data_value);
-		_add_music(delete_list_path, which_slot, &prev_music_data_value, file_music_data_value);
+		_insert_music(delete_list_path, which_slot, &prev_music_data_value, file_music_data_value);
 	}
 
 	else if (MUSIC_TO_BE_DOWNLOAD == file_music_data_value->delete_or_not) {
@@ -100,7 +100,7 @@ traverse_action_t __build_download_and_delete_list_cb(hash_node_data_t* file_nod
 		memset(&prev_music_data_value, 0, sizeof(music_data_value_t));
 
 		_get_first_node(download_list_path, which_slot, &prev_music_data_value);
-		_add_music(download_list_path, which_slot, &prev_music_data_value, file_music_data_value);
+		_insert_music(download_list_path, which_slot, &prev_music_data_value, file_music_data_value);
 	}
 
 	else if (MUSIC_KEEP == file_music_data_value->delete_or_not) {
@@ -316,7 +316,7 @@ exit:
  * 普通添加将curr_music的delete_or_not标记设置为MUSIC_KEEP
  * diff链表将curr_music的delete_or_not标记设置为MUSIC_TO_BE_DOWNLOAD
  */
-int _add_music(const char* list_path, uint32_t which_slot,
+int _insert_music(const char* list_path, uint32_t which_slot,
 		const music_data_value_t* prev_music_data_value,
 		const music_data_value_t* curr_music_data_value) {
 	int ret = -1;
@@ -343,22 +343,22 @@ int _add_music(const char* list_path, uint32_t which_slot,
 
 	// 第一个节点
 	if (0 == strcmp(DUMMY_MUSIC_PATH, prev_music_data_value->path)) {
-		music_debug("add first node : %s.", curr_music_data_value->path);
+		music_debug("[ + ] first node '%s' to '%s'.", curr_music_data_value->path, list_path);
 		curr_node_data.is_first_node = true;
 	}
 
-	if (0 != (ret = add_node(list_path, &prev_node_data, &curr_node_data, __add_music_cb))) {
-		music_error("add failed : %s.", curr_music_data_value->path);
+	if (0 != (ret = insert_node(list_path, &prev_node_data, &curr_node_data, __add_music_cb))) {
+		music_error("[ + ] '%s' to '%s' failed!", curr_music_data_value->path, list_path);
 		goto exit;
 	}
 
-	music_info("add success : %s.", curr_music_data_value->path);
+	music_info("[ + ] '%s' to '%s' success.", curr_music_data_value->path, list_path);
 
 exit:
 	return ret;
 }
 
-int _del_music(const char* list_path, uint32_t which_slot, const char* path) {
+int _delete_music(const char* list_path, uint32_t which_slot, const char* path) {
 	int ret = -1;
 	hash_node_data_t node_data;
 	music_data_value_t music_data_value;
@@ -377,11 +377,11 @@ int _del_music(const char* list_path, uint32_t which_slot, const char* path) {
 	node_data.value = &music_data_value;
 
 	if (0 != (ret = del_node(list_path, &node_data, __del_music_cb))) {
-		music_error("del failed %s in slot %d.", path, node_data.key);
+		music_error("[ - ] '%s' from '%s' in slot '%d'.", path, list_path, node_data.key);
 		goto exit;
 	}
 
-	music_info("del success : %s.", path);
+	music_info("[ - ] '%s' from '%s' success.", path, list_path);
 
 exit:
 	return ret;
