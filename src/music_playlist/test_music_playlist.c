@@ -329,7 +329,7 @@ void build_album_favorite_playlist() {
 		curr_music_data_value.delete_or_not = MUSIC_KEEP;
 		strncpy(curr_music_data_value.path, playlist_1_0[i], sizeof(curr_music_data_value.path));
 		curr_music_data_value.which_slot = which_slot;
-		add_album_music(which_slot, &prev_music_data_value, &curr_music_data_value);
+		add_album_music_in_slot(which_slot, &prev_music_data_value, &curr_music_data_value);
 		prev_music_data_value = curr_music_data_value;
 	}
 
@@ -340,7 +340,7 @@ void build_album_favorite_playlist() {
 		curr_music_data_value.delete_or_not = MUSIC_KEEP;
 		strncpy(curr_music_data_value.path, playlist_1_1[i], sizeof(curr_music_data_value.path));
 		curr_music_data_value.which_slot = which_slot;
-		add_album_music(which_slot, &prev_music_data_value, &curr_music_data_value);
+		add_album_music_in_slot(which_slot, &prev_music_data_value, &curr_music_data_value);
 		prev_music_data_value = curr_music_data_value;
 	}
 
@@ -351,7 +351,7 @@ void build_album_favorite_playlist() {
 		curr_music_data_value.delete_or_not = MUSIC_KEEP;
 		strncpy(curr_music_data_value.path, playlist_1_2[i], sizeof(curr_music_data_value.path));
 		curr_music_data_value.which_slot = which_slot;
-		add_album_music(which_slot, &prev_music_data_value, &curr_music_data_value);
+		add_album_music_in_slot(which_slot, &prev_music_data_value, &curr_music_data_value);
 		prev_music_data_value = curr_music_data_value;
 	}
 
@@ -362,7 +362,7 @@ void build_album_favorite_playlist() {
 
 	// 开始第一次删除歌曲，这里用首字母做哈希key，只是为了减少点代码
 	for (int i = 0; i < sizeof(del_playlist_1) / sizeof(char*); i++) {
-		del_album_music(del_playlist_1[i][0], del_playlist_1[i]);
+		del_album_music_in_slot(del_playlist_1[i][0], del_playlist_1[i]);
 		prev_music_data_value = curr_music_data_value;
 	}
 
@@ -380,7 +380,7 @@ void build_album_favorite_playlist() {
 		curr_music_data_value.delete_or_not = MUSIC_KEEP;
 		strncpy(curr_music_data_value.path, playlist_2_0[i], sizeof(curr_music_data_value.path));
 		curr_music_data_value.which_slot = which_slot;
-		add_album_music(which_slot, &prev_music_data_value, &curr_music_data_value);
+		add_album_music_in_slot(which_slot, &prev_music_data_value, &curr_music_data_value);
 		prev_music_data_value = curr_music_data_value;
 	}
 
@@ -391,7 +391,7 @@ void build_album_favorite_playlist() {
 		curr_music_data_value.delete_or_not = MUSIC_KEEP;
 		strncpy(curr_music_data_value.path, playlist_2_1[i], sizeof(curr_music_data_value.path));
 		curr_music_data_value.which_slot = which_slot;
-		add_album_music(which_slot, &prev_music_data_value, &curr_music_data_value);
+		add_album_music_in_slot(which_slot, &prev_music_data_value, &curr_music_data_value);
 		prev_music_data_value = curr_music_data_value;
 	}
 
@@ -402,7 +402,7 @@ void build_album_favorite_playlist() {
 		curr_music_data_value.delete_or_not = MUSIC_KEEP;
 		strncpy(curr_music_data_value.path, playlist_2_2[i], sizeof(curr_music_data_value.path));
 		curr_music_data_value.which_slot = which_slot;
-		add_album_music(which_slot, &prev_music_data_value, &curr_music_data_value);
+		add_album_music_in_slot(which_slot, &prev_music_data_value, &curr_music_data_value);
 		prev_music_data_value = curr_music_data_value;
 	}
 
@@ -415,18 +415,18 @@ void build_album_favorite_playlist() {
 
 	// 打印
 	for (int i = 0; i < header_data_value.playlist_cnt; ++i) {
-		music_cnt = get_album_playlist_music_cnt(i);
+		music_cnt = get_album_music_cnt_in_slot(i);
 		printf("---- album [%d] is %s, has %d music.\n", i, header_data_value.playlist[i].name, music_cnt);
 		for (int j = 0; j < music_cnt; ++j) {
-			get_album_next_music(i);
+			get_album_next_music_in_slot(i);
 		}
 	}
 	printf("\n-------------\n\n");
 	for (int i = 0; i < header_data_value.playlist_cnt; ++i) {
-		music_cnt = get_album_playlist_music_cnt(i);
+		music_cnt = get_album_music_cnt_in_slot(i);
 		printf("---- album [%d] is %s, has %d music.\n", i, header_data_value.playlist[i].name, music_cnt);
 		for (int j = 0; j < music_cnt; j++) {
-			get_album_prev_music(i);
+			get_album_prev_music_in_slot(i);
 		}
 	}
 	printf("---------------------------------------\n");

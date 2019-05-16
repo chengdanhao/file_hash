@@ -99,7 +99,7 @@ int get_header_data(const char* path, hash_header_data_t* output_header);
 int set_header_data(const char* path, hash_header_data_t* input_header);
 
 // 获取指定偏移量节点信息
-int get_node(const char* path, const uint32_t which_slot, off_t offset, hash_node_t* output_node);
+int get_node(const char* path, uint32_t which_slot, off_t offset, hash_node_t* output_node);
 
 // 添加节点
 int add_node(const char* path,

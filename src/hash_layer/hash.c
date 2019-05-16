@@ -229,10 +229,9 @@ exit:
 #undef DEBUG_SET_HEADER
 
 #define DEBUG_GET_NODE 0
-int get_node(const char* path, const uint32_t hash_key, off_t offset, hash_node_t* output_node) {
+int get_node(const char* path, uint32_t which_slot, off_t offset, hash_node_t* output_node) {
 	int ret = -1;
 	int fd = 0;
-	uint32_t which_slot = 0;
 	hash_header_t header;
 	slot_info_t* slots = NULL;
 	void* node_data_value = NULL;
@@ -270,7 +269,7 @@ int get_node(const char* path, const uint32_t hash_key, off_t offset, hash_node_
 
 		header.slots = slots;
 
-		which_slot = hash_key % slot_cnt;
+		which_slot %= slot_cnt;
 		offset = header.slots[which_slot].first_logic_node_offset;
 	}
 
