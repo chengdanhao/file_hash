@@ -104,11 +104,11 @@ int get_node(const char* path, uint32_t which_slot, off_t offset, hash_node_t* o
 // 添加节点
 int add_node(const char* path,
 		hash_node_data_t* input_prev_node_data, hash_node_data_t* input_curr_node_data,
-		int (*cb)(hash_node_data_t*, hash_node_data_t*));
+		bool (*cb)(hash_node_data_t*, hash_node_data_t*));
 
 // 删除节点
 int del_node(const char* path, hash_node_data_t* input_node_data,
-		int (*cb)(hash_node_data_t*, hash_node_data_t*));
+		bool (*cb)(hash_node_data_t*, hash_node_data_t*));
 
 // which_slot小于slot_cnt则遍历指定哈希槽，如果大于slot_cnt则遍历所有哈希槽
 uint8_t traverse_nodes(const char* list_path, traverse_by_what_t by_what,

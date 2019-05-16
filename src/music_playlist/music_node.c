@@ -90,7 +90,7 @@ traverse_action_t __build_download_and_delete_list_cb(hash_node_data_t* file_nod
 		memset(&prev_music_data_value, 0, sizeof(music_data_value_t));
 
 		_get_first_node(delete_list_path, which_slot, &prev_music_data_value);
-		_add_music(delete_list_path, 0, &prev_music_data_value, file_music_data_value);
+		_add_music(delete_list_path, which_slot, &prev_music_data_value, file_music_data_value);
 	}
 
 	else if (MUSIC_TO_BE_DOWNLOAD == file_music_data_value->delete_or_not) {
@@ -100,7 +100,7 @@ traverse_action_t __build_download_and_delete_list_cb(hash_node_data_t* file_nod
 		memset(&prev_music_data_value, 0, sizeof(music_data_value_t));
 
 		_get_first_node(download_list_path, which_slot, &prev_music_data_value);
-		_add_music(download_list_path, 0, &prev_music_data_value, file_music_data_value);
+		_add_music(download_list_path, which_slot, &prev_music_data_value, file_music_data_value);
 	}
 
 	else if (MUSIC_KEEP == file_music_data_value->delete_or_not) {
@@ -124,18 +124,18 @@ traverse_action_t __find_music_cb(hash_node_data_t* file_node_data, void* input_
 	return action;
 }
 
-int __add_music_cb(		hash_node_data_t* file_node_data, hash_node_data_t* input_prev_node_data) {
+bool __add_music_cb(		hash_node_data_t* file_node_data, hash_node_data_t* input_prev_node_data) {
 	music_data_value_t *file_music_data_value = (music_data_value_t*)(file_node_data->value);
 	music_data_value_t *input_prev_music_data_value = (music_data_value_t*)(input_prev_node_data->value);
 
-	return strncmp(file_music_data_value->path, input_prev_music_data_value->path, MAX_MUSIC_PATH_LEN);
+	return 0 == strncmp(file_music_data_value->path, input_prev_music_data_value->path, MAX_MUSIC_PATH_LEN);
 }
 
-int __del_music_cb(hash_node_data_t* file_node_data, hash_node_data_t* input_node_data) {
+bool __del_music_cb(hash_node_data_t* file_node_data, hash_node_data_t* input_node_data) {
 	music_data_value_t* file_music_data_value = (music_data_value_t*)(file_node_data->value);
 	music_data_value_t* input_music_data_value = (music_data_value_t*)(input_node_data->value);
 
-	return strncmp(file_music_data_value->path, input_music_data_value->path, MAX_MUSIC_PATH_LEN);
+	return 0 == strncmp(file_music_data_value->path, input_music_data_value->path, MAX_MUSIC_PATH_LEN);
 }
 
 void _show_playlist(const char* list_path) {

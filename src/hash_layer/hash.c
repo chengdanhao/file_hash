@@ -310,7 +310,7 @@ exit:
 #define DEBUG_ADD_NODE 0
 int add_node(const char* path,
 		hash_node_data_t* input_prev_node_data, hash_node_data_t* input_curr_node_data,
-		int (*cb)(hash_node_data_t*, hash_node_data_t*)) {
+		bool (*cb)(hash_node_data_t*, hash_node_data_t*)) {
 	int ret = -1;
 	int fd = 0;
 	bool find_prev_node = false;
@@ -459,7 +459,7 @@ int add_node(const char* path,
 			}
 
 			curr_physic_node.data.value = node_data_value;
-			if (0 == cb(&(curr_physic_node.data), input_prev_node_data)) {
+			if (true == cb(&(curr_physic_node.data), input_prev_node_data)) {
 				find_prev_node = true;
 				prev_logic_node = curr_physic_node;
 				prev_logic_node_offset = physic_offset;
@@ -759,7 +759,7 @@ exit:
 
 #define DEBUG_DEL_NODE 0
 int del_node(const char* path, hash_node_data_t* input_node_data,
-		int (*cb)(hash_node_data_t*, hash_node_data_t*)) {
+		bool (*cb)(hash_node_data_t*, hash_node_data_t*)) {
 	int ret = -1;
 	int fd = 0;
 	uint32_t which_slot = 0;
@@ -837,7 +837,7 @@ int del_node(const char* path, hash_node_data_t* input_node_data,
 		node.data.value = node_data_value;
 
 		// 找到了节点
-		if (0 == cb(&(node.data), input_node_data)) {
+		if (true == cb(&(node.data), input_node_data)) {
 			node.used = 0;
 			--header.slots[which_slot].node_cnt;
 
