@@ -665,6 +665,7 @@ next_loop:
 					next_logic_node.offsets.logic_prev = new_physic_node_offset;
 				} else {		// 在只有一个节点的情况下插入
 					prev_logic_node.offsets.logic_next = new_physic_node_offset;
+					prev_logic_node.offsets.logic_prev = new_physic_node_offset;
 				}
 
 				curr_physic_node.offsets.logic_next = next_logic_node_offset;
@@ -678,7 +679,7 @@ next_loop:
 				hash_debug("currNode : 0x%lX <- (0x%lX) -> 0x%lX",
 						curr_physic_node.offsets.logic_prev, new_physic_node_offset, curr_physic_node.offsets.logic_next);
 
-				// 在只有一个节点的情况下插入
+				// 超过一个节点的情况下插入
 				if (prev_logic_node_offset != next_logic_node_offset) {
 					hash_debug("nextNode : 0x%lX <- (0x%lX) -> 0x%lX",
 							next_logic_node.offsets.logic_prev, next_logic_node_offset, next_logic_node.offsets.logic_next);
