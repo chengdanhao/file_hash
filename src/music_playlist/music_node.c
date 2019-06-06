@@ -38,6 +38,11 @@ typedef struct {
 	char *delete_list_path;
 } download_and_delete_info_t;
 
+traverse_action_t __clean_playlist_cb(hash_node_data_t* file_node_data, void* input_arg) {
+	music_data_value_t* file_music_data_value = (music_data_value_t*)(file_node_data->value);
+	return TRAVERSE_ACTION_DELETE;
+}
+
 #define DEBUG_LIST 0
 traverse_action_t __show_playlist_cb(hash_node_data_t* file_node_data, void* input_arg) {
 	music_data_value_t* music_data_value = (music_data_value_t*)(file_node_data->value);
@@ -56,17 +61,6 @@ traverse_action_t __show_playlist_cb(hash_node_data_t* file_node_data, void* inp
 	return TRAVERSE_ACTION_DO_NOTHING;
 }
 #undef DEBUG_LIST
-
-traverse_action_t __clean_playlist_cb(hash_node_data_t* file_node_data, void* input_arg) {
-	music_data_value_t* music_data_value = (music_data_value_t*)(file_node_data->value);
-	char* delete_list_path = (char*)input_arg;
-
-	_delete_music(delete_list_path, music_data_value->which_slot, music_data_value->path);
-
-	// TODO:删除文件
-
-	return TRAVERSE_ACTION_DO_NOTHING;
-}
 
 traverse_action_t __pre_diff_playlist_cb(hash_node_data_t* file_node_data, void* input_arg) {
 	music_data_value_t* file_music_data_value = (music_data_value_t*)(file_node_data->value);
@@ -138,6 +132,13 @@ bool __del_music_cb(hash_node_data_t* file_node_data, hash_node_data_t* input_no
 	return 0 == strncmp(file_music_data_value->path, input_music_data_value->path, MAX_MUSIC_PATH_LEN);
 }
 
+void _clean_playlist(const char* list_path) {
+	music_warn("清空链表 %s ...", list_path);
+
+	traverse_nodes(list_path, TRAVERSE_BY_LOGIC,
+			MAX_HASH_SLOT_CNT, WITHOUT_PRINT, NULL, __clean_playlist_cb);
+}
+
 void _show_playlist(const char* list_path) {
 	traverse_nodes(list_path, TRAVERSE_BY_LOGIC,
 			MAX_HASH_SLOT_CNT, WITH_PRINT, NULL, __show_playlist_cb);
@@ -173,10 +174,6 @@ void _post_diff_playlist(const char* list_path,
 		traverse_nodes(list_path, TRAVERSE_BY_LOGIC,
 				i, WITHOUT_PRINT, &input_arg, __build_download_and_delete_list_cb);
 	}
-
-	// 根据删除列表的功能删除节点和文件
-	traverse_nodes(delete_list_path, TRAVERSE_BY_LOGIC,
-			MAX_HASH_SLOT_CNT, WITHOUT_PRINT, (void*)list_path, __clean_playlist_cb);
 }
 
 int _get_playlist_music_cnt(const char* list_path, uint32_t which_slot) {
@@ -338,12 +335,6 @@ int _insert_music(const char* list_path, uint32_t which_slot,
 
 	curr_node_data.key = which_slot;
 	curr_node_data.value = (void*)curr_music_data_value;
-
-	// 第一个节点
-	if (0 == strcmp(DUMMY_MUSIC_PATH, prev_music_data_value->path)) {
-		music_debug("[ + ] first node '%s' to '%s'.", curr_music_data_value->path, list_path);
-		curr_node_data.is_first_node = true;
-	}
 
 	if (0 != (ret = insert_node(list_path, &prev_node_data, &curr_node_data, __add_music_cb))) {
 		music_error("[ + ] '%s' to '%s' failed!", curr_music_data_value->path, list_path);

@@ -330,7 +330,6 @@ void build_story_favorite_playlist() {
 
 	init_story_playlist_hash_engine();
 
-	strncpy(prev_music_data_value.path, DUMMY_MUSIC_PATH, sizeof(prev_music_data_value.path));
 	for (int i = 0; i < sizeof(playlist_1) / sizeof(char*); i++) {
 		curr_music_data_value.delete_or_not = MUSIC_KEEP;
 		strncpy(curr_music_data_value.path, playlist_1[i], sizeof(curr_music_data_value.path));
@@ -366,8 +365,9 @@ void build_story_favorite_playlist() {
 	show_story_playlist();
 	printf("----------------------------------------------------------\n");
 
-	// 以清空方式更新一个链表
-	strncpy(prev_music_data_value.path, DUMMY_MUSIC_PATH, sizeof(prev_music_data_value.path));
+	// 清空链表
+	clean_story_playlist();
+
 	for (int i = 0; i < sizeof(playlist_3) / sizeof(char*); i++) {
 		curr_music_data_value.delete_or_not = MUSIC_KEEP;
 		strncpy(curr_music_data_value.path, playlist_3[i], sizeof(curr_music_data_value.path));

@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include "hash.h"
 
-#define DUMMY_ALARM_TONE_PATH "dummy_alarm_tone"
 #define ALARM_TONE_LIST_PATH "alarm_tone_list"
 #define MAX_ALARM_TONE_PATH_LEN 200
 

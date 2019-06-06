@@ -107,12 +107,6 @@ int insert_alarm_tone(const alarm_tone_data_value_t* prev_alarm_tone_data_value,
 		goto exit;
 	}
 
-	// 第一个节点
-	if (0 == strcmp(DUMMY_ALARM_TONE_PATH, prev_alarm_tone_data_value->path)) {
-		at_debug("[ + ] first node '%s' to '%s'.", curr_alarm_tone_data_value->path, ALARM_TONE_LIST_PATH);
-		curr_node_data.is_first_node = true;
-	}
-
 	if (0 != (ret = insert_node(ALARM_TONE_LIST_PATH, &prev_node_data, &curr_node_data, _add_alarm_tone_cb))) {
 		at_error("[ + ] '%s' to '%s' failed!", curr_alarm_tone_data_value->path, ALARM_TONE_LIST_PATH);
 		goto exit;
