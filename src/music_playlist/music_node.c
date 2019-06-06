@@ -139,6 +139,8 @@ bool __del_music_cb(hash_node_data_t* file_node_data, hash_node_data_t* input_no
 }
 
 void _show_playlist(const char* list_path) {
+	traverse_nodes(list_path, TRAVERSE_BY_PHYSIC,
+				MAX_HASH_SLOT_CNT, WITH_PRINT, NULL, __show_playlist_cb);
 	traverse_nodes(list_path, TRAVERSE_BY_LOGIC,
 			MAX_HASH_SLOT_CNT, WITH_PRINT, NULL, __show_playlist_cb);
 }

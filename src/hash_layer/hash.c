@@ -758,7 +758,167 @@ exit:
 }
 #undef DEBUG_ADD_NODE
 
-#define DEBUG_DEL_NODE 0
+#define DEBUG_DEL_NODE 1
+int _del_node_hepler(int fd, hash_node_t *node, hash_header_t *header, off_t offset, uint32_t which_slot) {
+	int ret = -1;
+	uint32_t slot_cnt = 0;
+	uint32_t node_data_value_size = 0;
+	hash_node_t prev_logic_node;
+	hash_node_t next_logic_node;
+	off_t first_logic_node_offset = 0;
+	off_t prev_logic_node_offset = 0;
+	off_t next_logic_node_offset = 0;
+	void *addr = NULL;	// 防止在memcpy中，文件中保存的上一次指针值覆盖了当前正在运行的指针
+
+	slot_cnt = header->slot_cnt;
+	node_data_value_size = header->node_data_value_size;
+	first_logic_node_offset = header->slots[which_slot].first_logic_node_offset;
+
+	node->used = 0;
+	--header->slots[which_slot].node_cnt;
+
+	/*
+	 * 双向链表删除，curr为待插入节点
+	 * nextNode->prev = prevNode;
+	 * prevNode->next = nextNode;
+	 */
+	/* START 调整逻辑链表 */
+	/* START 1. 读取 prev next 节点信息*/
+	// prev 节点
+	prev_logic_node_offset = node->offsets.logic_prev;
+	if (lseek(fd, prev_logic_node_offset, SEEK_SET) < 0) {
+		hash_error("seek to %ld fail : %s.", prev_logic_node_offset, strerror(errno));
+		goto exit;
+	}
+
+	if (read(fd, &prev_logic_node, sizeof(hash_node_t)) < 0) {
+		hash_error("read prev_logic_node error : %s.", strerror(errno));
+		goto exit;
+	}
+
+	// next 节点。如果prev和next相等，说明当前只有一个节点，后面会有多个这种判断
+	next_logic_node_offset = node->offsets.logic_next;
+	if (lseek(fd, next_logic_node_offset, SEEK_SET) < 0) {
+		hash_error("seek to %ld fail : %s.", next_logic_node_offset, strerror(errno));
+		goto exit;
+	}
+
+	if (read(fd, &next_logic_node, sizeof(hash_node_t)) < 0) {
+		hash_error("read next_logic_node error : %s.", strerror(errno));
+		goto exit;
+	}
+	/* END 1. 读取 prev next 节点信息*/
+	/* START 2. 修改节点链式关系 */
+
+	// 仅剩 一个 节点
+	if (offset == prev_logic_node_offset && offset == next_logic_node_offset) {
+		hash_warn("only 1 node 0x%lX left.", offset);
+		header->slots[which_slot].first_logic_node_offset = node->offsets.logic_next;
+		goto clear_node;
+	} else {
+		if (offset == first_logic_node_offset) {	// 删除逻辑第一个节点
+#if DEBUG_DEL_NODE
+			hash_debug("delete first logic node 0x%lX, update first logic node to 0x%lX.",
+					offset, node->offsets.logic_next);
+#endif
+			header->slots[which_slot].first_logic_node_offset = node->offsets.logic_next;
+		} else {
+#if DEBUG_DEL_NODE
+			hash_debug("delete normal node 0x%lX.", offset);
+#endif
+		}
+
+		// 剩两个节点
+		if (prev_logic_node_offset == next_logic_node_offset) {
+#if DEBUG_DEL_NODE
+			hash_debug("2 nodes left.");
+#endif
+			prev_logic_node.offsets.logic_prev = prev_logic_node_offset;
+			prev_logic_node.offsets.logic_next = prev_logic_node_offset;
+		}
+		
+		// 更多节点
+		else {
+			next_logic_node.offsets.logic_prev = prev_logic_node_offset;
+			prev_logic_node.offsets.logic_next = next_logic_node_offset;
+		}
+	}
+
+	/* END 2. 修改节点链式关系 */
+#if DEBUG_DEL_NODE
+	hash_info("after del 0x%lX, prev = ( 0x%lX <- 0x%lX -> 0x%lX ), next = ( 0x%lX <- 0x%lX -> 0x%lX ).", offset,
+			prev_logic_node.offsets.logic_prev, prev_logic_node_offset, prev_logic_node.offsets.logic_next,
+			next_logic_node.offsets.logic_prev, next_logic_node_offset, next_logic_node.offsets.logic_next);
+#endif
+	/* START 3. 写回到文件 */
+	if (lseek(fd, prev_logic_node_offset, SEEK_SET) < 0) {
+		hash_error("seek to %ld fail : %s.", prev_logic_node_offset, strerror(errno));
+		goto exit;
+	}
+
+	if (write(fd, &prev_logic_node, sizeof(hash_node_t)) < 0) {
+		hash_error("write prev_logic_node error : %s.", strerror(errno));
+		goto exit;
+	}
+
+	if (prev_logic_node_offset != next_logic_node_offset) {
+		if (lseek(fd, next_logic_node_offset, SEEK_SET) < 0) {
+			hash_error("seek to %ld fail : %s.", next_logic_node_offset, strerror(errno));
+			goto exit;
+		}
+
+		if (write(fd, &next_logic_node, sizeof(hash_node_t)) < 0) {
+			hash_error("write next_logic_node error : %s.", strerror(errno));
+			goto exit;
+		}
+	}
+	/* END 3. 写回到文件 */
+	/* END 完成调整逻辑链表 */
+
+clear_node:
+	/* START 清空当前节点 */
+	// 移到节点起始位置
+	if (lseek(fd, offset, SEEK_SET) < 0) {
+		hash_error("seek back to %ld fail : %s.", offset, strerror(errno));
+		goto exit;
+	}
+
+	addr = node->data.value;
+	node->used = 0;
+	memset(&(node->data), 0, sizeof(hash_node_data_t));
+	if (write(fd, node, sizeof(hash_node_t)) < 0) {
+		hash_error("del node error : %s.", strerror(errno));
+		goto exit;
+	}
+
+	node->data.value = addr;
+	memset(node->data.value, 0, node_data_value_size);
+	if (node_data_value_size > 0
+			&& write(fd, node->data.value, node_data_value_size) < 0) {
+		hash_error("del node.data.value error : %s.", strerror(errno));
+		goto exit;
+	}
+	/* END 清空当前节点 */
+
+	/* START 保存头部信息 */
+	if (lseek(fd, sizeof(hash_header_t), SEEK_SET) < 0) {
+		hash_error("seek to %ld fail : %s.", sizeof(hash_header_t), strerror(errno));
+		goto exit;
+	}
+
+	if (write(fd, header->slots, slot_cnt * sizeof(slot_info_t)) < 0) {
+		hash_error("write header.slots error : %s.", strerror(errno));
+		goto exit;
+	}
+	/* END 保存头部信息 */
+
+	ret = 0;
+
+exit:
+	return ret;
+}
+#undef DEBUG_DEL_NODE
+
 int del_node(const char* path, hash_node_data_t* input_node_data,
 		bool (*cb)(hash_node_data_t*, hash_node_data_t*)) {
 	int ret = -1;
@@ -766,17 +926,12 @@ int del_node(const char* path, hash_node_data_t* input_node_data,
 	uint32_t which_slot = 0;
 	off_t offset = 0;
 	off_t first_logic_node_offset = 0;
-	off_t prev_logic_node_offset = 0;
-	off_t next_logic_node_offset = 0;
 	hash_header_t header;
 	slot_info_t* slots = NULL;
 	hash_node_t node;
-	hash_node_t prev_logic_node;
-	hash_node_t next_logic_node;
 	void* node_data_value = NULL;
 	uint32_t slot_cnt = 0;
 	uint32_t node_data_value_size = 0;
-	void *addr = NULL;	// 防止在memcpy中，文件中保存的上一次指针值覆盖了当前正在运行的指针
 
 	memset(&header, 0, sizeof(hash_header_t));
 	memset(&node, 0, sizeof(hash_node_t));
@@ -839,146 +994,9 @@ int del_node(const char* path, hash_node_data_t* input_node_data,
 
 		// 找到了节点
 		if (true == cb(&(node.data), input_node_data)) {
-			node.used = 0;
-			--header.slots[which_slot].node_cnt;
-
-			/*
-			 * 双向链表删除，curr为待插入节点
-			 * nextNode->prev = prevNode;
-			 * prevNode->next = nextNode;
-			 */
-			/* START 调整逻辑链表 */
-			/* START 1. 读取 prev next 节点信息*/
-			// prev 节点
-			prev_logic_node_offset = node.offsets.logic_prev;
-			if (lseek(fd, prev_logic_node_offset, SEEK_SET) < 0) {
-				hash_error("seek to %ld fail : %s.", prev_logic_node_offset, strerror(errno));
+			if ((ret = _del_node_hepler(fd, &node, &header, offset, which_slot)) < 0) {
 				goto close_file;
 			}
-
-			if (read(fd, &prev_logic_node, sizeof(hash_node_t)) < 0) {
-				hash_error("read prev_logic_node error : %s.", strerror(errno));
-				goto close_file;
-			}
-
-			// next 节点。如果prev和next相等，说明当前只有一个节点，后面会有多个这种判断
-			next_logic_node_offset = node.offsets.logic_next;
-			if (lseek(fd, next_logic_node_offset, SEEK_SET) < 0) {
-				hash_error("seek to %ld fail : %s.", next_logic_node_offset, strerror(errno));
-				goto close_file;
-			}
-
-			if (read(fd, &next_logic_node, sizeof(hash_node_t)) < 0) {
-				hash_error("read next_logic_node error : %s.", strerror(errno));
-				goto close_file;
-			}
-			/* END 1. 读取 prev next 节点信息*/
-			/* START 2. 修改节点链式关系 */
-
-			// 仅剩 一个 节点
-			if (offset == prev_logic_node_offset && offset == next_logic_node_offset) {
-				hash_warn("only 1 node 0x%lX left.", offset);
-				header.slots[which_slot].first_logic_node_offset = node.offsets.logic_next;
-				goto clear_node;
-			} else {
-				if (offset == first_logic_node_offset) {	// 删除逻辑第一个节点
-#if DEBUG_DEL_NODE
-					hash_debug("delete first logic node 0x%lX, update first logic node to 0x%lX.",
-							offset, node.offsets.logic_next);
-#endif
-					header.slots[which_slot].first_logic_node_offset = node.offsets.logic_next;
-				} else {
-#if DEBUG_DEL_NODE
-					hash_debug("delete normal node 0x%lX.", offset);
-#endif
-				}
-
-				// 剩两个节点
-				if (prev_logic_node_offset == next_logic_node_offset) {
-#if DEBUG_DEL_NODE
-					hash_debug("2 nodes left.");
-#endif
-					prev_logic_node.offsets.logic_prev = prev_logic_node_offset;
-					prev_logic_node.offsets.logic_next = prev_logic_node_offset;
-				}
-				
-				// 更多节点
-				else {
-					next_logic_node.offsets.logic_prev = prev_logic_node_offset;
-					prev_logic_node.offsets.logic_next = next_logic_node_offset;
-				}
-			}
-
-			/* END 2. 修改节点链式关系 */
-#if DEBUG_DEL_NODE
-			hash_info("after del 0x%lX, prev = ( 0x%lX <- 0x%lX -> 0x%lX ), next = ( 0x%lX <- 0x%lX -> 0x%lX ).", offset,
-					prev_logic_node.offsets.logic_prev, prev_logic_node_offset, prev_logic_node.offsets.logic_next,
-					next_logic_node.offsets.logic_prev, next_logic_node_offset, next_logic_node.offsets.logic_next);
-#endif
-			/* START 3. 写回到文件 */
-			if (lseek(fd, prev_logic_node_offset, SEEK_SET) < 0) {
-				hash_error("seek to %ld fail : %s.", prev_logic_node_offset, strerror(errno));
-				goto close_file;
-			}
-
-			if (write(fd, &prev_logic_node, sizeof(hash_node_t)) < 0) {
-				hash_error("write prev_logic_node error : %s.", strerror(errno));
-				goto close_file;
-			}
-
-			if (prev_logic_node_offset != next_logic_node_offset) {
-				if (lseek(fd, next_logic_node_offset, SEEK_SET) < 0) {
-					hash_error("seek to %ld fail : %s.", next_logic_node_offset, strerror(errno));
-					goto close_file;
-				}
-
-				if (write(fd, &next_logic_node, sizeof(hash_node_t)) < 0) {
-					hash_error("write next_logic_node error : %s.", strerror(errno));
-					goto close_file;
-				}
-			}
-			/* END 3. 写回到文件 */
-			/* END 完成调整逻辑链表 */
-
-clear_node:
-			/* START 清空当前节点 */
-			// 移到节点起始位置
-			if (lseek(fd, offset, SEEK_SET) < 0) {
-				hash_error("seek back to %ld fail : %s.", offset, strerror(errno));
-				goto close_file;
-			}
-
-			addr = node.data.value;
-			node.used = 0;
-			memset(&(node.data), 0, sizeof(hash_node_data_t));
-			if (write(fd, &node, sizeof(hash_node_t)) < 0) {
-				hash_error("del node error : %s.", strerror(errno));
-				goto close_file;
-			}
-
-			node.data.value = addr;
-			memset(node.data.value, 0, node_data_value_size);
-			if (node_data_value_size > 0
-					&& write(fd, node.data.value, node_data_value_size) < 0) {
-				hash_error("del node.data.value error : %s.", strerror(errno));
-				goto close_file;
-			}
-			/* END 清空当前节点 */
-
-			/* START 保存头部信息 */
-			if (lseek(fd, sizeof(hash_header_t), SEEK_SET) < 0) {
-				hash_error("seek to %ld fail : %s.", sizeof(hash_header_t), strerror(errno));
-				goto close_file;
-			}
-
-			if (write(fd, header.slots, slot_cnt * sizeof(slot_info_t)) < 0) {
-				hash_error("write header.slots error : %s.", strerror(errno));
-				goto close_file;
-			}
-			/* END 保存头部信息 */
-
-			ret = 0;
-
 			break;
 		}
 
@@ -993,7 +1011,6 @@ exit:
 	safe_free(node_data_value);
 	return ret;
 }
-#undef DEBUG_DEL_NODE
 
 // which_slot小于slot_cnt则遍历指定哈希槽，如果大于slot_cnt则遍历所有哈希槽
 uint8_t traverse_nodes(const char* list_path, traverse_by_what_t by_what,
@@ -1128,6 +1145,8 @@ uint8_t traverse_nodes(const char* list_path, traverse_by_what_t by_what,
 					hash_error("write node.data.value error : %s.", strerror(errno));
 					goto close_file;
 				}
+			} else if (TRAVERSE_ACTION_DELETE & action) {
+
 			}
 
 			if (TRAVERSE_ACTION_BREAK & action) {
