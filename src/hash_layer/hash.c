@@ -758,8 +758,8 @@ exit:
 }
 #undef DEBUG_ADD_NODE
 
-#define DEBUG_DEL_NODE 1
-int _del_node_hepler(int fd, hash_node_t *node, hash_header_t *header, off_t offset, uint32_t which_slot) {
+#define DEBUG_DEL_NODE 0
+int _del_node_hepler(int fd, off_t curr_node_offset, uint32_t which_slot, hash_node_t *node, hash_header_t *header) {
 	int ret = -1;
 	uint32_t slot_cnt = 0;
 	uint32_t node_data_value_size = 0;
@@ -811,20 +811,20 @@ int _del_node_hepler(int fd, hash_node_t *node, hash_header_t *header, off_t off
 	/* START 2. 修改节点链式关系 */
 
 	// 仅剩 一个 节点
-	if (offset == prev_logic_node_offset && offset == next_logic_node_offset) {
-		hash_warn("only 1 node 0x%lX left.", offset);
+	if (curr_node_offset == prev_logic_node_offset && curr_node_offset == next_logic_node_offset) {
+		hash_warn("only 1 node 0x%lX left.", curr_node_offset);
 		header->slots[which_slot].first_logic_node_offset = node->offsets.logic_next;
 		goto clear_node;
 	} else {
-		if (offset == first_logic_node_offset) {	// 删除逻辑第一个节点
+		if (curr_node_offset == first_logic_node_offset) {	// 删除逻辑第一个节点
 #if DEBUG_DEL_NODE
 			hash_debug("delete first logic node 0x%lX, update first logic node to 0x%lX.",
-					offset, node->offsets.logic_next);
+					curr_node_offset, node->offsets.logic_next);
 #endif
 			header->slots[which_slot].first_logic_node_offset = node->offsets.logic_next;
 		} else {
 #if DEBUG_DEL_NODE
-			hash_debug("delete normal node 0x%lX.", offset);
+			hash_debug("delete normal node 0x%lX.", curr_node_offset);
 #endif
 		}
 
@@ -846,7 +846,7 @@ int _del_node_hepler(int fd, hash_node_t *node, hash_header_t *header, off_t off
 
 	/* END 2. 修改节点链式关系 */
 #if DEBUG_DEL_NODE
-	hash_info("after del 0x%lX, prev = ( 0x%lX <- 0x%lX -> 0x%lX ), next = ( 0x%lX <- 0x%lX -> 0x%lX ).", offset,
+	hash_info("after del 0x%lX, prev = ( 0x%lX <- 0x%lX -> 0x%lX ), next = ( 0x%lX <- 0x%lX -> 0x%lX ).", curr_node_offset,
 			prev_logic_node.offsets.logic_prev, prev_logic_node_offset, prev_logic_node.offsets.logic_next,
 			next_logic_node.offsets.logic_prev, next_logic_node_offset, next_logic_node.offsets.logic_next);
 #endif
@@ -861,6 +861,7 @@ int _del_node_hepler(int fd, hash_node_t *node, hash_header_t *header, off_t off
 		goto exit;
 	}
 
+	// 剩余节点大于 2 时
 	if (prev_logic_node_offset != next_logic_node_offset) {
 		if (lseek(fd, next_logic_node_offset, SEEK_SET) < 0) {
 			hash_error("seek to %ld fail : %s.", next_logic_node_offset, strerror(errno));
@@ -878,8 +879,8 @@ int _del_node_hepler(int fd, hash_node_t *node, hash_header_t *header, off_t off
 clear_node:
 	/* START 清空当前节点 */
 	// 移到节点起始位置
-	if (lseek(fd, offset, SEEK_SET) < 0) {
-		hash_error("seek back to %ld fail : %s.", offset, strerror(errno));
+	if (lseek(fd, curr_node_offset, SEEK_SET) < 0) {
+		hash_error("seek back to %ld fail : %s.", curr_node_offset, strerror(errno));
 		goto exit;
 	}
 
@@ -994,7 +995,7 @@ int del_node(const char* path, hash_node_data_t* input_node_data,
 
 		// 找到了节点
 		if (true == cb(&(node.data), input_node_data)) {
-			if ((ret = _del_node_hepler(fd, &node, &header, offset, which_slot)) < 0) {
+			if ((ret = _del_node_hepler(fd, offset, which_slot, &node, &header)) < 0) {
 				goto close_file;
 			}
 			break;
@@ -1146,7 +1147,9 @@ uint8_t traverse_nodes(const char* list_path, traverse_by_what_t by_what,
 					goto close_file;
 				}
 			} else if (TRAVERSE_ACTION_DELETE & action) {
-
+				if (_del_node_hepler(fd, offset, which_slot, &node, &header) < 0) {
+					goto close_file;
+				}
 			}
 
 			if (TRAVERSE_ACTION_BREAK & action) {

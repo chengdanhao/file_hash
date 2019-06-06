@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include "hash.h"
 
+#define DUMMY_ALARM_TONE_PATH "dummy_alarm_tone"
 #define ALARM_TONE_LIST_PATH "alarm_tone_list"
 #define MAX_ALARM_TONE_PATH_LEN 200
 
@@ -18,9 +19,10 @@ typedef struct {
 	char path[MAX_ALARM_TONE_PATH_LEN];
 } alarm_tone_data_value_t;
 
-int find_alarm_tone(uint32_t hash_key, uint32_t time_stamp, char* alarm_tone_path);
-int add_alarm_tone(uint32_t hash_key, uint32_t time_stamp, char* alarm_tone_path);
-int del_alarm_tone(uint32_t hash_key, uint32_t time_stamp);
+int find_alarm_tone(uint32_t time_stamp);
+int insert_alarm_tone(const alarm_tone_data_value_t* prev_alarm_tone_data_value,
+		const alarm_tone_data_value_t* curr_alarm_tone_data_value);
+int del_alarm_tone(uint32_t time_stamp);
 void show_alarm_tone_list();
 int init_alarm_tone_hash_engine();
 

@@ -124,7 +124,7 @@ traverse_action_t __find_music_cb(hash_node_data_t* file_node_data, void* input_
 	return action;
 }
 
-bool __add_music_cb(		hash_node_data_t* file_node_data, hash_node_data_t* input_prev_node_data) {
+bool __add_music_cb(hash_node_data_t* file_node_data, hash_node_data_t* input_prev_node_data) {
 	music_data_value_t *file_music_data_value = (music_data_value_t*)(file_node_data->value);
 	music_data_value_t *input_prev_music_data_value = (music_data_value_t*)(input_prev_node_data->value);
 
@@ -139,8 +139,6 @@ bool __del_music_cb(hash_node_data_t* file_node_data, hash_node_data_t* input_no
 }
 
 void _show_playlist(const char* list_path) {
-	traverse_nodes(list_path, TRAVERSE_BY_PHYSIC,
-				MAX_HASH_SLOT_CNT, WITH_PRINT, NULL, __show_playlist_cb);
 	traverse_nodes(list_path, TRAVERSE_BY_LOGIC,
 			MAX_HASH_SLOT_CNT, WITH_PRINT, NULL, __show_playlist_cb);
 }
@@ -324,7 +322,6 @@ int _insert_music(const char* list_path, uint32_t which_slot,
 	int ret = -1;
 	hash_node_data_t prev_node_data;
 	hash_node_data_t curr_node_data;
-	playlist_header_data_value_t playlist_header_data_value;
 
 	// 如果存在，会将对应节点标记为MUSIC_KEEP
 	if (_find_music(list_path, which_slot, curr_music_data_value->path) > 0) {
@@ -335,7 +332,6 @@ int _insert_music(const char* list_path, uint32_t which_slot,
 
 	memset(&prev_node_data, 0, sizeof(prev_node_data));
 	memset(&curr_node_data, 0, sizeof(curr_node_data));
-	memset(&playlist_header_data_value, 0, sizeof(playlist_header_data_value));
 
 	prev_node_data.key = which_slot;
 	prev_node_data.value = (void*)prev_music_data_value;
