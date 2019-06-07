@@ -65,7 +65,6 @@ void diff_story_playlist() {
 	init_story_playlist_hash_engine();
 
 	// 普通添加时 curr_music 的 delete_or_not 标记是 MUSIC_KEEP
-	strncpy(prev_music_data_value.path, DUMMY_MUSIC_PATH, sizeof(prev_music_data_value.path));
 	for (int i = 0; i < sizeof(playlist_1) / sizeof(char*); i++) {
 		curr_music_data_value.delete_or_not = MUSIC_KEEP;
 		curr_music_data_value.which_slot = 0;
@@ -92,7 +91,6 @@ void diff_story_playlist() {
 	 * 因此循环体执行完后，MUSIC_TO_BE_DELETE, MUSIC_TO_BE_DOWNLOAD, MUSIC_KEEP
 	 * 都会在分别标记出来
 	 */
-	get_story_first_node(&prev_music_data_value);
 	for (int i = 0; i < sizeof(playlist_2) / sizeof(char*); i++) {
 		curr_music_data_value.delete_or_not = MUSIC_TO_BE_DOWNLOAD;
 		strncpy(curr_music_data_value.path, playlist_2[i], sizeof(curr_music_data_value.path));
@@ -178,7 +176,6 @@ void diff_album_playlist() {
 	init_album_playlist_hash_engine();
 
 	// 开始第一次添加歌曲
-	strncpy(prev_music_data_value.path, DUMMY_MUSIC_PATH, sizeof(prev_music_data_value.path));
 	which_slot = 0;
 	printf("添加 %s 到 %d 哈希槽\n", channel_1_0, which_slot);
 	for (int i = 0; i < sizeof(playlist_1_0) / sizeof(char*); i++) {
@@ -189,7 +186,6 @@ void diff_album_playlist() {
 		prev_music_data_value = curr_music_data_value;
 	}
 
-	strncpy(prev_music_data_value.path, DUMMY_MUSIC_PATH, sizeof(prev_music_data_value.path));
 	which_slot = 1;
 	printf("添加 %s 到 %d 哈希槽\n", channel_1_1, which_slot);
 	for (int i = 0; i < sizeof(playlist_1_1) / sizeof(char*); i++) {
@@ -200,7 +196,6 @@ void diff_album_playlist() {
 		prev_music_data_value = curr_music_data_value;
 	}
 
-	strncpy(prev_music_data_value.path, DUMMY_MUSIC_PATH, sizeof(prev_music_data_value.path));
 	which_slot = 2;
 	printf("添加 %s 到 %d 哈希槽\n", channel_1_2, which_slot);
 	for (int i = 0; i < sizeof(playlist_1_2) / sizeof(char*); i++) {
@@ -220,7 +215,6 @@ void diff_album_playlist() {
 
 	// 开始第二次增加歌曲
 	which_slot = 0;
-	get_album_first_node_in_slot(which_slot, &prev_music_data_value);
 	printf("添加 %s 到 %d 哈希槽\n", channel_2_0, which_slot);
 	for (int i = 0; i < sizeof(playlist_2_0) / sizeof(char*); i++) {
 		curr_music_data_value.delete_or_not = MUSIC_TO_BE_DOWNLOAD;
@@ -231,7 +225,6 @@ void diff_album_playlist() {
 	}
 
 	which_slot = 1;
-	get_album_first_node_in_slot(which_slot, &prev_music_data_value);
 	printf("添加 %s 到 %d 哈希槽\n", channel_2_1, which_slot);
 	for (int i = 0; i < sizeof(playlist_2_1) / sizeof(char*); i++) {
 		curr_music_data_value.delete_or_not = MUSIC_TO_BE_DOWNLOAD;
@@ -242,7 +235,6 @@ void diff_album_playlist() {
 	}
 
 	which_slot = 2;
-	get_album_first_node_in_slot(which_slot, &prev_music_data_value);
 	printf("添加 %s 到 %d 哈希槽\n", channel_2_2, which_slot);
 	for (int i = 0; i < sizeof(playlist_2_2) / sizeof(char*); i++) {
 		curr_music_data_value.delete_or_not = MUSIC_TO_BE_DOWNLOAD;
@@ -351,7 +343,6 @@ void build_story_favorite_playlist() {
 	show_story_playlist();
 	printf("----------------------------------------------------------\n");
 
-	// 链表为彻底清空，在其中插入
 	strncpy(prev_music_data_value.path, "DDD", sizeof(prev_music_data_value.path));
 	for (int i = 0; i < sizeof(playlist_2) / sizeof(char*); i++) {
 		curr_music_data_value.delete_or_not = MUSIC_KEEP;
@@ -368,6 +359,11 @@ void build_story_favorite_playlist() {
 	// 清空链表
 	clean_story_playlist();
 
+	printf("-- 清空链表后 --------------------------------------------\n");
+	show_story_playlist();
+	printf("----------------------------------------------------------\n");
+
+	strncpy(prev_music_data_value.path, "XXX new", sizeof(prev_music_data_value.path));
 	for (int i = 0; i < sizeof(playlist_3) / sizeof(char*); i++) {
 		curr_music_data_value.delete_or_not = MUSIC_KEEP;
 		strncpy(curr_music_data_value.path, playlist_3[i], sizeof(curr_music_data_value.path));
@@ -473,7 +469,6 @@ void build_album_favorite_playlist() {
 	// 开始第一次添加歌曲
 	get_album_playlist_header(&header_data_value);
 
-	strncpy(prev_music_data_value.path, DUMMY_MUSIC_PATH, sizeof(prev_music_data_value.path));
 	which_slot = find_slot_no_by_chan_name(channel_1_0);
 	printf("添加 %s 到 %d 哈希槽\n", channel_1_0, which_slot);
 	for (int i = 0; i < sizeof(playlist_1_0) / sizeof(char*); i++) {
@@ -484,7 +479,6 @@ void build_album_favorite_playlist() {
 		prev_music_data_value = curr_music_data_value;
 	}
 
-	strncpy(prev_music_data_value.path, DUMMY_MUSIC_PATH, sizeof(prev_music_data_value.path));
 	which_slot = find_slot_no_by_chan_name(channel_1_1);
 	printf("添加 %s 到 %d 哈希槽\n", channel_1_1, which_slot);
 	for (int i = 0; i < sizeof(playlist_1_1) / sizeof(char*); i++) {
@@ -495,7 +489,6 @@ void build_album_favorite_playlist() {
 		prev_music_data_value = curr_music_data_value;
 	}
 
-	strncpy(prev_music_data_value.path, DUMMY_MUSIC_PATH, sizeof(prev_music_data_value.path));
 	which_slot = find_slot_no_by_chan_name(channel_1_2);
 	printf("添加 %s 到 %d 哈希槽\n", channel_1_2, which_slot);
 	for (int i = 0; i < sizeof(playlist_1_2) / sizeof(char*); i++) {
@@ -524,7 +517,6 @@ void build_album_favorite_playlist() {
 	// 开始第二次增加歌曲
 	get_album_playlist_header(&header_data_value);
 
-	strncpy(prev_music_data_value.path, DUMMY_MUSIC_PATH, sizeof(prev_music_data_value.path));
 	which_slot = find_slot_no_by_chan_name(channel_2_0);
 	printf("添加 %s 到 %d 哈希槽\n", channel_2_0, which_slot);
 	for (int i = 0; i < sizeof(playlist_2_0) / sizeof(char*); i++) {
@@ -557,7 +549,6 @@ void build_album_favorite_playlist() {
 		prev_music_data_value = curr_music_data_value;
 	}
 
-#if 1
 	printf("-- 第 2 次增加歌曲 ---------------------------------------\n");
 	show_album_playlist();
 	printf("----------------------------------------------------------\n");
@@ -581,14 +572,13 @@ void build_album_favorite_playlist() {
 		}
 	}
 	printf("---------------------------------------\n");
-#endif
 }
 
 int test_music_playlist_main() {
-	//diff_story_playlist();
-	//diff_album_playlist();
+	diff_story_playlist();
+	diff_album_playlist();
 	build_story_favorite_playlist();
-	//build_album_favorite_playlist();
+	build_album_favorite_playlist();
 
 	return 0;
 }

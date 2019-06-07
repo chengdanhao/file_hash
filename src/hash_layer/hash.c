@@ -320,6 +320,7 @@ int insert_node(const char* path,
 	off_t first_physic_node_offset = 0;
 	off_t first_logic_node_offset = 0;
 	off_t prev_logic_node_offset = 0;
+	off_t tail_logic_node_offset = 0;
 	off_t next_logic_node_offset = 0;
 	off_t new_physic_node_offset = 0;
 	hash_header_t header;
@@ -389,6 +390,8 @@ int insert_node(const char* path,
 		goto close_file;
 	}
 
+	tail_logic_node_offset = prev_logic_node.offsets.logic_prev;
+
 	physic_offset = first_physic_node_offset;
 	do {
 		// 先找到上一个节点的位置
@@ -430,11 +433,15 @@ next_loop:
 	} while (physic_offset != first_physic_node_offset);
 
 	if (false == find_prev_node) {
+		// 链表中有节点，但是没找到前驱节点，将curr插到尾部
 		if (header.slots[which_slot].node_cnt > 0) {
-			hash_error("node cnt is %d, didn't find prev node.", header.slots[which_slot].node_cnt);
-			goto close_file;
-		} else {
-			hash_warn("didn't find prev, and no node in this slot, treat curr as first node.");
+			prev_logic_node_offset = tail_logic_node_offset;
+			hash_warn("didn't find prev node, node cnt is %d, add curr to tail (0x%lX).", header.slots[which_slot].node_cnt, prev_logic_node_offset);
+		}
+
+		// 链表为空，当作第一个节点插入
+		else {
+			hash_warn("didn't find prev, no node in this slot, treat curr as first node.");
 			is_first_node = true;
 		}
 	}
@@ -762,7 +769,9 @@ int _del_node_hepler(int fd, off_t curr_node_offset, uint32_t which_slot, hash_n
 
 	// 仅剩 一个 节点
 	if (curr_node_offset == prev_logic_node_offset && curr_node_offset == next_logic_node_offset) {
-		hash_warn("only 1 node 0x%lX left.", curr_node_offset);
+#if DEBUG_DEL_NODE
+		hash_debug("only 1 node 0x%lX left.", curr_node_offset);
+#endif
 		header->slots[which_slot].first_logic_node_offset = node->offsets.logic_next;
 		goto clear_node;
 	} else {
@@ -1060,7 +1069,10 @@ uint8_t traverse_nodes(const char* list_path, traverse_by_what_t by_what,
 
 			node.data.value = node_data_value;
 
-			first_node_offset = header.slots[i].first_logic_node_offset;
+			first_logic_node_offset = header.slots[i].first_logic_node_offset;
+
+			// 遍历过程中的删除操作有可能会改变第 一个 逻辑节点的位置
+			if (TRAVERSE_BY_LOGIC == by_what) { first_node_offset = first_logic_node_offset; }
 
 			prev_offset = TRAVERSE_BY_LOGIC == by_what ? node.offsets.logic_prev : node.offsets.physic_prev;
 			next_offset = TRAVERSE_BY_LOGIC == by_what ? node.offsets.logic_next : node.offsets.physic_next;

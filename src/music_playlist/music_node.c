@@ -39,7 +39,6 @@ typedef struct {
 } download_and_delete_info_t;
 
 traverse_action_t __clean_playlist_cb(hash_node_data_t* file_node_data, void* input_arg) {
-	music_data_value_t* file_music_data_value = (music_data_value_t*)(file_node_data->value);
 	return TRAVERSE_ACTION_DELETE;
 }
 
@@ -83,7 +82,6 @@ traverse_action_t __build_download_and_delete_list_cb(hash_node_data_t* file_nod
 
 		memset(&prev_music_data_value, 0, sizeof(music_data_value_t));
 
-		_get_first_node(delete_list_path, which_slot, &prev_music_data_value);
 		_insert_music(delete_list_path, which_slot, &prev_music_data_value, file_music_data_value);
 	}
 
@@ -93,7 +91,6 @@ traverse_action_t __build_download_and_delete_list_cb(hash_node_data_t* file_nod
 
 		memset(&prev_music_data_value, 0, sizeof(music_data_value_t));
 
-		_get_first_node(download_list_path, which_slot, &prev_music_data_value);
 		_insert_music(download_list_path, which_slot, &prev_music_data_value, file_music_data_value);
 	}
 
@@ -146,13 +143,14 @@ void _show_playlist(const char* list_path) {
 
 // 将music的delete_or_not标记设置为MUSIC_DELETE
 void _pre_diff_playlist(const char* list_path,
+		uint32_t slot_cnt,
 		const char* download_list_path,
 		const char* delete_list_path) {
 	traverse_nodes(list_path, TRAVERSE_BY_LOGIC,
 			MAX_HASH_SLOT_CNT, WITHOUT_PRINT, NULL, __pre_diff_playlist_cb);
 
-	_init_music_hash_engine(download_list_path, ALBUM_SLOT_CNT);
-	_init_music_hash_engine(delete_list_path, ALBUM_SLOT_CNT);
+	_init_music_hash_engine(download_list_path, slot_cnt);
+	_init_music_hash_engine(delete_list_path, slot_cnt);
 }
 
 void _post_diff_playlist(const char* list_path,
@@ -178,16 +176,6 @@ void _post_diff_playlist(const char* list_path,
 
 int _get_playlist_music_cnt(const char* list_path, uint32_t which_slot) {
 	return get_slot_node_cnt(list_path, which_slot);
-}
-
-int _get_first_node(const char* list_path, uint32_t which_slot, music_data_value_t* music_data_value) {
-	hash_node_t prev_node;
-
-	memset(&prev_node, 0, sizeof(hash_node_t));
-
-	prev_node.data.value = music_data_value;
-
-	return get_node(list_path, which_slot, 0, &prev_node);
 }
 
 uint8_t _find_music(const char* list_path, uint32_t which_slot, const char* music_path) {

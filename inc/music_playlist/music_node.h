@@ -19,8 +19,6 @@
 #define STORY_SLOT_CNT 1
 #define ALBUM_SLOT_CNT MAX_HASH_SLOT_CNT
 
-#define DUMMY_MUSIC_PATH "dummy_path"
-
 /*
  * 后续只需要修改这个头文件就可以自定义节点数据，底层代码不用修改
  */
@@ -59,7 +57,7 @@ typedef enum {
 
 void _show_playlist(const char* list_path);
 void _clean_playlist(const char* list_path);
-void _pre_diff_playlist(const char* list_path, const char* download_list_path, const char* delete_list_path);
+void _pre_diff_playlist(const char* list_path, uint32_t slot_cnt, const char* download_list_path, const char* delete_list_path);
 void _post_diff_playlist(const char* list_path, const char* download_list_path, const char* delete_list_path);
 int _get_first_node(const char* list_path, uint32_t which_slot, music_data_value_t* music_data_value);
 int _get_playlist_music_cnt(const char* list_path, uint32_t which_slot);
@@ -77,10 +75,8 @@ int _init_music_hash_engine(const char* path, uint32_t slot_cnt);
 
 #define clean_story_playlist() _clean_playlist(STORY_PLAYLIST_PATH)
 
-#define pre_diff_story_playlist() _pre_diff_playlist(STORY_PLAYLIST_PATH, STORY_DOWNLOAD_LIST_PATH, STORY_DELETE_LIST_PATH)
+#define pre_diff_story_playlist() _pre_diff_playlist(STORY_PLAYLIST_PATH, STORY_SLOT_CNT, STORY_DOWNLOAD_LIST_PATH, STORY_DELETE_LIST_PATH)
 #define post_diff_story_playlist() _post_diff_playlist(STORY_PLAYLIST_PATH, STORY_DOWNLOAD_LIST_PATH, STORY_DELETE_LIST_PATH)
-
-#define get_story_first_node(music_data_value) _get_first_node(STORY_PLAYLIST_PATH, 0, music_data_value)
 
 #define get_story_playlist_music_cnt() _get_playlist_music_cnt(STORY_PLAYLIST_PATH, 0)
 
@@ -106,10 +102,8 @@ int _init_music_hash_engine(const char* path, uint32_t slot_cnt);
 
 #define clean_album_playlist() _clean_playlist(ALBUM_PLAYLIST_PATH)
 
-#define pre_diff_album_playlist() _pre_diff_playlist(ALBUM_PLAYLIST_PATH, ALBUM_DOWNLOAD_LIST_PATH, ALBUM_DELETE_LIST_PATH)
+#define pre_diff_album_playlist() _pre_diff_playlist(ALBUM_PLAYLIST_PATH, ALBUM_SLOT_CNT, ALBUM_DOWNLOAD_LIST_PATH, ALBUM_DELETE_LIST_PATH)
 #define post_diff_album_playlist() _post_diff_playlist(ALBUM_PLAYLIST_PATH, ALBUM_DOWNLOAD_LIST_PATH, ALBUM_DELETE_LIST_PATH)
-
-#define get_album_first_node_in_slot(which_slot, music_data_value) _get_first_node(ALBUM_PLAYLIST_PATH, which_slot, music_data_value)
 
 #define get_album_music_cnt_in_slot(which_slot) _get_playlist_music_cnt(ALBUM_PLAYLIST_PATH, which_slot)
 
