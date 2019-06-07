@@ -8,9 +8,10 @@
 
 // 遍历拿到所需数据后采取的动作，可以通过 “|” 的方式叠加动作
 typedef enum {
-	TRAVERSE_ACTION_DO_NOTHING,
-	TRAVERSE_ACTION_UPDATE,
-	TRAVERSE_ACTION_BREAK,
+	TRAVERSE_ACTION_DO_NOTHING = 1,
+	TRAVERSE_ACTION_UPDATE     = (1 << 1),
+	TRAVERSE_ACTION_DELETE     = (1 << 2),
+	TRAVERSE_ACTION_BREAK      = (1 << 3),
 } traverse_action_t;
 
 // 遍历节点时是否打印相关信息
