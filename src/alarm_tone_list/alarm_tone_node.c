@@ -46,7 +46,18 @@ bool _del_alarm_tone_cb(hash_node_data_t* file_node_data, hash_node_data_t* inpu
 	return file_alarm_tone_data_value->time_stamp == input_alarm_tone_data_value->time_stamp;
 }
 
-traverse_action_t _print_alarm_tone_node_cb(hash_node_data_t* file_node_data, void* input_arg) {
+traverse_action_t _clean_alarm_tone_list_cb(hash_node_data_t* file_node_data, void* input_arg) {
+	alarm_tone_data_value_t* alarm_tone_data_value = (alarm_tone_data_value_t*)(file_node_data->value);
+
+	// 可以通过input_arg传入具体参数做更具体的限定，更具体的功能应该封装成新的函数，这里只是个例子
+	if (alarm_tone_data_value->time_stamp < 5) {
+		return TRAVERSE_ACTION_DELETE;
+	} else {
+		return TRAVERSE_ACTION_DO_NOTHING;
+	}
+}
+
+traverse_action_t _print_alarm_tone_list_cb(hash_node_data_t* file_node_data, void* input_arg) {
 	alarm_tone_data_value_t* alarm_tone_data_value = (alarm_tone_data_value_t*)(file_node_data->value);
 
 	printf("\e[7;37m%u : %s\e[0m", alarm_tone_data_value->time_stamp, alarm_tone_data_value->path);
@@ -143,9 +154,14 @@ exit:
 	return ret;
 }
 
+void clean_alarm_tone_list() {
+	traverse_nodes(ALARM_TONE_LIST_PATH, TRAVERSE_BY_LOGIC,
+			ALARM_TONE_LIST_SLOT_CNT, WITHOUT_PRINT, NULL, _clean_alarm_tone_list_cb);
+}
+
 void show_alarm_tone_list() {
 	traverse_nodes(ALARM_TONE_LIST_PATH, TRAVERSE_BY_LOGIC,
-			ALARM_TONE_LIST_SLOT_CNT, WITH_PRINT, NULL, _print_alarm_tone_node_cb);
+			ALARM_TONE_LIST_SLOT_CNT, WITH_PRINT, NULL, _print_alarm_tone_list_cb);
 }
 
 int init_alarm_tone_hash_engine() {

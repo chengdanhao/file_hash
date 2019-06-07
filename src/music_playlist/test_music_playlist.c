@@ -504,11 +504,15 @@ void build_album_favorite_playlist() {
 	printf("----------------------------------------------------------\n");
 
 
+#if 0
 	// 开始第一次删除歌曲，这里用首字母做哈希key，只是为了减少点代码
 	for (int i = 0; i < sizeof(del_playlist_1) / sizeof(char*); i++) {
 		delete_album_music_in_slot(del_playlist_1[i][0], del_playlist_1[i]);
 		prev_music_data_value = curr_music_data_value;
 	}
+#else
+	clean_album_playlist();
+#endif
 
 	printf("-- 第 1 次删除歌曲 ---------------------------------------\n");
 	show_album_playlist();
@@ -575,9 +579,9 @@ void build_album_favorite_playlist() {
 }
 
 int test_music_playlist_main() {
-	diff_story_playlist();
-	diff_album_playlist();
-	build_story_favorite_playlist();
+	//diff_story_playlist();
+	//diff_album_playlist();
+	//build_story_favorite_playlist();
 	build_album_favorite_playlist();
 
 	return 0;

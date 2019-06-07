@@ -22,6 +22,7 @@ int find_alarm_tone(uint32_t time_stamp);
 int insert_alarm_tone(const alarm_tone_data_value_t* prev_alarm_tone_data_value,
 		const alarm_tone_data_value_t* curr_alarm_tone_data_value);
 int del_alarm_tone(uint32_t time_stamp);
+void clean_alarm_tone_list();
 void show_alarm_tone_list();
 int init_alarm_tone_hash_engine();
 

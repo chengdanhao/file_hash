@@ -64,6 +64,10 @@ void build_alarm_tone_list() {
 	find_alarm_tone(3);
 	find_alarm_tone(6);
 	find_alarm_tone(7);
+
+	clean_alarm_tone_list();
+
+	show_alarm_tone_list();
 }
 
 int test_alarm_tone_list_main() {
