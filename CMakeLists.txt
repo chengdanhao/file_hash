@@ -14,7 +14,6 @@ INCLUDE_DIRECTORIES(
   ${PROJECT_SOURCE_DIR}/inc/hash_layer
   ${PROJECT_SOURCE_DIR}/inc/alarm_tone_list
   ${PROJECT_SOURCE_DIR}/inc/music_playlist
-  ${PROJECT_SOURCE_DIR}/inc/to_be_download_list
 )
 
 SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
